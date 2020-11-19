@@ -1,2 +1,2 @@
 # AVS_python
-AVS Encoder by python
+AVS Encoder and Decoder by python
