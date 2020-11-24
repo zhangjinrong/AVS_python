@@ -21,13 +21,37 @@ def state_analysis(file_string):
     sub_start=0
     sub_end=6
     sub_string = file_string[sub_start:sub_end]
+    global state
     if(s_a_dict[sub_string]=='start_code'&state == 'start_code')
         state = 'start_code'
     if(s_a_dict[sub_string]=='video_sequence_start_code'&state = 'start_code')
         state = 'video_sequence_start_code'
-    if(s_a_dict[sub_string]=='video_sequence_start_code'&state = 'start_code')
-        state = 'video_sequence_start_code'
-    if(s_a_dict[sub_string]=='video_sequence_start_code'&state = 'start_code')
-        state = 'video_sequence_start_code'
-    if(s_a_dict[sub_string]=='video_sequence_start_code'&state = 'start_code')
-        state = 'video_sequence_start_code'
+        get_sequence_header()
+    #video_sequence_code begin
+    if(s_a_dict[sub_string]=='video_sequence_end_code'&state = 'video_sequence_start_code')
+        state = ''#
+    if(s_a_dict[sub_string]!='video_sequence_end_code'&state = 'video_sequence_start_code')
+        video_sequence_code_state_analysis(sub_string)
+    
+
+'''
+    video_sequence_code analysis flow
+'''
+def get_sequence_header():
+    pass
+
+'''
+    video_sequence_code analysis flow
+'''
+def video_sequence_code_state_analysis(sub_string):
+    if(s_a_dict[sub_string]=='user_data_start_code')
+        pass
+    if(s_a_dict[sub_string]=='intra_picture_start_code')
+        pass
+    if(s_a_dict[sub_string]=='inter_picture_start_code')
+        pass
+    if(s_a_dict[sub_string]=='user_data_start_code')
+        pass
+    if(s_a_dict[sub_string]=='extension_start_code')
+        pass
+    
