@@ -1,16 +1,43 @@
 # This file is a basic file, store video message 
-# store sequence_header message, instantiation it and add to main function
-# name = sequence_header name, value = sequence_header size, instantiation shuould be changed
+# store video_sequence message, instantiation it and add to main function
+
+
+
+'''
+视频序列定义,这是整个视频解码的最高层
+'''
+class video_sequence:
+    def __init__(self):
+        while((next_bits(32) != video_sequence_end_code) & (next_bits(32) != video_edit_code)):
+            sequence_header()
+            extension_and_user_data(0)
+            while((next_bits(32) == inter_picture_start_code) | (next_bits(32) == intra_picture_start_code)):
+                if (next_bits(32) == intra_picture_start_code):#0x000001B3
+                    intra_picture_header( )
+                else:
+                    inter_picture_header( )
+                extension_and_user_data(1)
+                picture_data( )
+        if (next_bits(32) == intra_picture_start_code):#0x000001B3
+            video_sequence_end_code#0x000001B1
+        if (next_bits(32) == video_edit_code):
+            video_edit_code #0x000001B7
+
+
+
+'''
+序列头定义
+'''
 class sequence_header:
     def __init__(self):
-        self.video_sequence_start_code=32
-        self.profile_id=8
-        self.level_id=8
+        self.video_sequence_start_code=32#0x000001B0
+        self.profile_id=8#档次标号
+        self.level_id=8#级别标号
         self.progressive_sequence=1
         self.field_coded_sequence=1
-        self.library_stream_flag=1
-        self.library_picture_enable_flag=1
-        self.duplicate_sequence_header_flag=1
+        self.library_stream_flag=1#知识位流标志.值为'1'表示当前位流是知识位流;值为'0'表示当前位流是主位流
+        self.library_picture_enable_flag=1#知识图像允许标志.值为'1'表示视频序列中可存在使用知识图像作为参考图像的帧间预测图像;值为'0'表示视频序列中不应存在使用知识图像作为参考图像的帧间预测图像。
+        self.duplicate_sequence_header_flag=1#知识位流重复序列头标志.
         self.marker_bit1=1
         self.horizontal_size=14
         self.marker_bit2=1
@@ -73,7 +100,7 @@ class sequence_header:
         self.patch_width_minus1 =1
         self.patch_height_minus1=1
         self.reserved_bits=2
-   
+
     '''
     for (j = 0; j < NumRefPicListSet[0]; j++) 
         {reference_picture_list_set(0, j)}
@@ -114,15 +141,15 @@ class sequence_header:
     '''
     def extension_and_user_data(i):
         while ((next_bits(32) == extension_start_code) | (next_bits(32) == user_data_start_code)):
-            if (next_bits(32) == extension_start_code):
+            if (next_bits(32) == extension_start_code):#0x000001B5
                 extension_data(i)
-            if (next_bits(32) == user_data_start_code)
+            if (next_bits(32) == user_data_start_code)#0x000001B2
                 user_data()
     '''
     扩展数据定义
     '''
     def extension_data(i):
-        while ((next_bits(32) == extension_start_code):
+        while ((next_bits(32) == extension_start_code):#0x000001B5
             if(i==0):
                 if(next_bits(4)== '0010'):#序列显示扩展 
                     sequence_display_extension()
@@ -160,7 +187,7 @@ class sequence_header:
 '''
 class user_data:
     def __init__(self):
-        self.user_data_start_code=32
+        self.user_data_start_code=32#0x000001B2
         while (next_bits(24) != '0000 0000 0000 0000 0000 0001'):
             self.user_data=8
 
@@ -169,7 +196,7 @@ class user_data:
 '''
 class sequence_display_extension:
     def __init__(self):
-        self.extension_id=4
+        self.extension_id=4#0010,不同的值有不同的含义
         self.video_format=3
         self.sample_range=1
         self.colour_description=1
@@ -189,7 +216,7 @@ class sequence_display_extension:
     时域可伸缩扩展定义
     ''' 
     def temporal_scalability_extension():
-        extension_id=4
+        extension_id=4#0010
         num_of_temporal_level_minus1=3
         for i in range(num_of_temporal_level_minus1):
             temporal_frame_rate_code[i]=4
@@ -202,7 +229,7 @@ class sequence_display_extension:
     '''
 class copyright_extension:
     def __init__():
-        self.extension_id=4
+        self.extension_id=4#0010
         self.copyright_flag=1
         self.copyright_id=8
         self.original_or_copy=1
@@ -219,7 +246,7 @@ class copyright_extension:
 '''
 class  cei_extension:
     def __init__():
-        self.extension_id=4
+        self.extension_id=4#0010
         self.content_encryption_algorithm=8
         self.content_encryption_method=8
         self.original_or_copy=1
@@ -259,8 +286,8 @@ class  cei_extension:
 '''
 class hdr_dynamic_metadata_extension:
     def __init__():
-        extension_id=4
-        extension_id=4
+        extension_id=4#0010
+        extension_id=4#0010
         while ( next_bits(24) != '0000 0000 0000 0000 0000 0001'):
             extension_data_byte
     
@@ -269,7 +296,7 @@ class hdr_dynamic_metadata_extension:
 '''
 class mastering_display_and_content_metadata_extension:
     def __init__():
-        self.extension_id=4
+        self.extension_id=4#0010
         for i in range(3):
         self.display_primaries_x[i]=16
         self.marker_bit=1
@@ -293,7 +320,7 @@ class mastering_display_and_content_metadata_extension:
 '''
 class camera_parameters_extension:
     def __init__():
-        self.extension_id =4
+        self.extension_id =4#0010
         self.reserved_bits =1
         self.camera_id =7
         self.marker_bit =1
@@ -335,7 +362,7 @@ class camera_parameters_extension:
 '''
 class roi_parameters_extension:
     def __init__():
-        self.extension_id=4
+        self.extension_id=4#0010
         self.current_picture_roi_num=8
         self.roiIndex = 0
         if(PictureType!=0)
@@ -395,7 +422,7 @@ class roi_parameters_extension:
 '''
 class cross_random_access_point_reference_extension:
     def __init__():
-        self.extension_id
+        self.extension_id#0010
         self.crr_lib_number
         self.marker_bit
         while(i<crr_lib_number):
@@ -562,7 +589,7 @@ class inter_picture_header:
 '''
 class picture_display_extension:
     def __init__(seq_data):
-        extension_id
+        extension_id#0010
         for i in range(NumberOfFrameCentreOffsets):
             picture_centre_horizontal_offset
             marker_bit
@@ -574,14 +601,14 @@ class picture_display_extension:
 class picture_data:
     def __init__(seq_data):
         patch()
-        while(next_bits(32) == patch_start_code):
+        while(next_bits(32) == patch_start_code):#000001+0x00～0x7F(patch_index)
             patch()
 '''
 片定义
 '''
 class patch:
     def __init__(seq_data):
-        patch_start_code
+        patch_start_code#000001+0x00～0x7F(patch_index)
         if (fixed_picture_qp_flag == '0') :
             fixed_patch_qp_flag
             patch_qp
@@ -958,19 +985,84 @@ class block:
                     coeff_run
                     coeff_level_minus1
                     coeff_sign
+                    AbsLevel = coeff_level_minus1 + 1
+                    ScanPosOffset = ScanPosOffset + coeff_run
+                    PosxInBlk = InvScanCoeffInBlk[idxW][idxH][ScanPosOffset][0]
+                    PosyInBlk = InvScanCoeffInBlk[idxW][idxH][ScanPosOffset][1]
+                    QuantCoeffMatrix[PosxInBlk][PosyInBlk] = coeff_sign ? –AbsLevel : AbsLevel
+                    if (ScanPosOffset >= NumOf Coeff – 1):
+                        break
+                    coeff_last
+                    ScanPosOffset = ScanPosOffset + 1
+        else if ((component != 'COMPONENT_CHROMA' & i == 0) | (component =='COMPONENT_CHROMA' & i == 1)):
+            aec_ipcm_stuffing_bit
+            while (! byte_aligned()):
+                aec_byte_alignment_bit0
+        M1 = isChroma ? blockWidth / 2 : blockWidth
+        M2= isChroma ? blockHeight / 2 : blockHeight
+        xMin = Min(32, M1)
+        yMin = Min(32, M2)
+        for yStep in range(M2/yMin):
+            for xStep in range(<M1/xMin):
+                for y in range(yMin):
+                    for x in range(xMin):
+                        pcm_coeff
+                        QuantCoeffMatrix[x+xStep*xMin][y + yStep*yMin] = pcm_coeff
 
 
-
-AbsLevel = coeff_level_minus1 + 1
-ScanPosOffset = ScanPosOffset + coeff_run
-PosxInBlk = InvScanCoeffInBlk[idxW][idxH][ScanPosOffset][0]
-PosyInBlk = InvScanCoeffInBlk[idxW][idxH][ScanPosOffset][1]
-QuantCoeffMatrix[PosxInBlk][PosyInBlk] = coeff_sign ? –AbsLevel : AbsLevel
-if (ScanPosOffset >= NumOf Coeff – 1) {
-break
-}
-coeff_last
-ScanPosOffset = ScanPosOffset + 1
-
-class next_start_code:
+'''
+自适应修正滤波参数定义
+'''
+class alf_parameter_set:
     def __init__(seq_data):
+        if (PictureAlfEnableFlag[0] == 1):
+            alf_filter_num_minus1
+            for i in range(alf_filter_num_minus1+1):
+                if ((i > 0) & (alf_filter_num_minus1 != 15)):
+                    alf_region_distance[i]
+                for j in range(9):
+                    alf_coeff_luma[i][j]
+        if(PictureAlfEnableFlag[1] == 1):
+            for j in range(9):
+                alf_coeff_chroma[0][j]
+        if (PictureAlfEnableFlag[2] == 1):
+            for j in range(9):
+                alf_coeff_chroma[1][j]
+
+                
+
+'''
+is_end_of_patch
+在位流中检测是否已达到片的结尾，如果已到达片的结尾，返回TRUE，否则返回FALSE
+'''
+class is_end_of_patch:
+    def __init__():
+        if(byte_aligned()):
+            if (next_bits(32) == 0x80000001):
+                return True#片结束
+        else:
+            if ((byte_aligned_next_bits(24) == 0x000001) & is_stuffing_pattern( )):
+                return True #片结束
+        return False
+
+'''
+在位流中检测当前字节中剩下的位或在字节对齐时下一个字节是否是片结尾填充的二进制位，如
+果是，则返回TRUE，否则返回FALSE。此函数不修改位流指针
+'''
+class is_stuffing_pattern:
+    def __init__(n):
+        if (next_bits(8-n) == (1<<(7-n))) # n=0～7，为位流指针在当前字节的位置偏移， n为0时位流指针指向当前字节最高位
+            return True
+        else:
+            return False
+
+'''
+在位流中寻找下一个起始码，将位流指针指向起始码前缀的第一个二进制位。
+'''
+class next_start_code:
+    def __init__():
+    stuffing_bit#1
+    while (! byte_aligned()):
+        stuffing_bit#0
+    while (next_bits(24) != '0000 0000 0000 0000 0000 0001')#起始码前缀
+        stuffing_byte#00000000
