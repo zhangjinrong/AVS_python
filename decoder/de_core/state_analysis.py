@@ -2,7 +2,7 @@ s_a_dict =  {
     '000001':'start_code',#起始码前缀
     '00': 'patch_start_code',#00-7F is patch_start_code
     '8F': 'patch_end_code',
-    'B0': 'video_sequence_start_code',
+    'B0': 'video_sequence_start_code',#视频序列起始码
     'B1': 'video_sequence_end_code',
     'B2': 'user_data_start_code',
     '000001B3': 'intra_picture_start_code',

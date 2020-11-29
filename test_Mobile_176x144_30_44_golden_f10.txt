@@ -1,0 +1,66 @@
+HPM version : 4.0.1 -------------------------------------------------------------------------------
+< Configurations >
+	config file name     : ../cfg/encode_IPPP.cfg
+	width                    : 176
+	height                   : 144
+	FPS                      : 60
+	intra picture period     : 60
+	input bit depth          : 8
+	internal bit depth       : 8
+	QP                       : 44
+	frames                   : 10
+	hierarchical GOP         : disabled
+	Patch flag               : 0
+	sub_sample_ratio         : 1
+	delta_qp flag            : 0
+	qp_offset_cb             : 0
+	qp_offset_cr             : 0
+	qp_offset_adp            : 1
+	seq_ref2_lib_enable      : 0
+
+CU split CFG: 
+	ctu_size:        64
+	min_cu_size:     4
+	max_part_ratio:  8
+	max_split_times: 6
+	min_qt_size:     8
+	max_bt_size:     64
+	max_eqt_size:    64
+	max_dt_size:     64
+
+Tool CFG:
+DEBLOCK: 1, CROSS_PATCH_LP: 1, SAO: 1, ALF: 0, 
+AMVR: 1, HMVP_NUM: 8, AFFINE: 1, SMVD: 1, UMVE: 1, EMVR: 1, 
+IPCM: 0, TSCPM: 1, IPF: 1, 
+PBT: 1, SecondaryTr: 1, WeightedQuant: 0, 
+INTRA_DT: 1, MaxDTSize: 64, 
+-------------------------------------------------------------------------------
+  Input YUV file           : /home/dell/AVS2test/Mobile_176x144_30.yuv 
+  Output bitstream         : test_Mobile_176x144_30_44.bin 
+  Output YUV file          : test_Mobile_176x144_30_44_rec.yuv 
+--------------------------------------------------------------------------------------
+ POC       QP   PSNR-Y    PSNR-U    PSNR-V    Bits      EncT(ms)   MS-SSIM   Ref. List
+--------------------------------------------------------------------------------------
+0      ( I) 44   27.6631   31.6653   30.7588   25656     9162      [L0 ] [L1 ] 
+1      ( P) 45   27.3946   31.7251   30.8439   1232      7908      [L0 0 ] [L1 ] 
+2      ( P) 45   27.3184   31.7142   30.8570   1752      9668      [L0 1 ] [L1 ] 
+3      ( P) 45   27.2078   31.8284   30.8013   2040      11031     [L0 2 ] [L1 ] 
+4      ( P) 45   27.2661   31.7991   30.7320   2208      10569     [L0 3 ] [L1 ] 
+5      ( P) 45   27.2009   31.7057   30.6290   1896      9709      [L0 4 ] [L1 ] 
+6      ( P) 45   27.1057   31.6157   30.7529   2144      10043     [L0 5 ] [L1 ] 
+7      ( P) 45   27.1045   31.4821   30.5980   2248      10285     [L0 6 ] [L1 ] 
+8      ( P) 45   26.9642   31.4657   30.6042   2048      10009     [L0 7 ] [L1 ] 
+9      ( P) 45   27.0276   31.4762   30.4644   2360      10790     [L0 8 ] [L1 ] 
+Entering bumping process... 
+===============================================================================
+  PSNR Y(dB)       : 27.2253
+  PSNR U(dB)       : 31.6477
+  PSNR V(dB)       : 30.7041
+  Total bits(bits) : 43584
+  bitrate(kbps)    : 261.5040
+===============================================================================
+Encoded frame count               = 10
+Total encoding time               = 99174.000 msec, 99.174 sec
+Average encoding time for a frame = 9917.400 msec
+Average encoding speed            = 0.101 frames/sec
+===============================================================================
