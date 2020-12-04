@@ -28,6 +28,21 @@ class video_sequence:
 '''
 序列头定义
 '''
+dict_sequence_header =  {
+    'video_sequence_start_code':0x000001B0,#起始码前缀
+    'bbv_delay':0xFFFFFFFF,
+    '00': 'patch_start_code',#00-7F is patch_start_code
+    '8F': 'patch_end_code',
+    'B0': 'video_sequence_start_code',#视频序列起始码
+    'B1': 'video_sequence_end_code',
+    'B2': 'user_data_start_code',
+    '000001B3': 'intra_picture_start_code',
+    'B5': 'extension_start_code',
+    'B6': 'inter_picture_start_code',
+    'B7': 'video_edit_code',
+    'FFFFFFFF': 'bbv_delay'
+    }
+
 class sequence_header:
     def __init__(self):
         self.video_sequence_start_code=32#0x000001B0
@@ -61,8 +76,7 @@ class sequence_header:
         self.rpl1_idx_exist_flag=1
         self.rpl1_same_as_rpl0_flag=1
         self.marker_bit8=1
-        self.num_ref_pic_list_set[0]=1
-        self.num_ref_pic_list_set[1]=1
+        self.num_ref_pic_list_set[2]
         self.num_ref_default_active_minus1[0]=1
         self.num_ref_default_active_minus1[1]=1
         self.log2_lcu_size_minus2=3
@@ -110,7 +124,8 @@ class sequence_header:
     }
     参考图像队列配置集定义
     '''
-    def rence_picture_list_set(list, rpls):
+class reference_picture_list_set:
+    def __init__(self,rpls):
         if(LibraryPictureEnableFlag):
             reference_to_library_enable_flag
         for i in range(len(NumOfRefPic[list][rpls])):
