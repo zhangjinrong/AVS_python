@@ -7,21 +7,33 @@
 视频序列定义,这是整个视频解码的最高层
 '''
 class video_sequence:
-    def __init__(self):
-        while((next_bits(32) != video_sequence_end_code) & (next_bits(32) != video_edit_code)):
-            sequence_header()
+    def __init__(self,input_file):
+        self.data_file = input_file
+        self.pointer_position = 0
+    def run():
+        while((get_read_data(32) != dict('video_sequence_end_code')) & (get_read_data(32) != dict('video_edit_code'))):
+            sequence_header(self.data_file,self.pointer_position)
             extension_and_user_data(0)
-            while((next_bits(32) == inter_picture_start_code) | (next_bits(32) == intra_picture_start_code)):
-                if (next_bits(32) == intra_picture_start_code):#0x000001B3
-                    intra_picture_header( )
+            while((get_read_data(32) == dict('inter_picture_start_code')) | (get_read_data(32) == dict('intra_picture_start_code'))):
+                if (next_bits(32) == dict('intra_picture_start_code')):#0x000001B3
+                    intra_picture_header()
                 else:
-                    inter_picture_header( )
+                    inter_picture_header()
                 extension_and_user_data(1)
                 picture_data( )
-        if (next_bits(32) == intra_picture_start_code):#0x000001B3
+        if (pop_read_data(32) == dict('intra_picture_start_code')):#0x000001B3
             video_sequence_end_code#0x000001B1
-        if (next_bits(32) == video_edit_code):
+        if (pop_read_data(32) == dict('intra_picture_start_code')):
             video_edit_code #0x000001B7
+            
+    def pop_read_data(self,read_length):
+        string = self.input_file[pointer_position,pointer_position+read_length]
+        pointer_position = pointer_position + read_length
+        return string
+
+    def get_read_data(self,read_length):
+        string = self.input_file[pointer_position,pointer_position+read_length]
+        return string
 
 
 
@@ -44,7 +56,9 @@ dict_sequence_header =  {
     }
 
 class sequence_header:
-    def __init__(self):
+    def __init__(self,input_file,pointer_position):
+        self.data_file = input_file
+        self.pointer_position = pointer_position
         self.video_sequence_start_code=32#0x000001B0
         self.profile_id=8#档次标号
         self.level_id=8#级别标号
@@ -114,6 +128,101 @@ class sequence_header:
         self.patch_width_minus1 =1
         self.patch_height_minus1=1
         self.reserved_bits=2
+    def run():
+        if(self.pop_read_data(32)==dict('video_sequence_start_code')):
+            self.seq_header.video_sequence_start_code = dict('video_sequence_start_code')
+            log.logger.info('video_sequence_start_code')
+            self.seq_header.profile_id = self.pop_read_data(8)
+            self.seq_header.level_id = self.pop_read_data(8)
+            self.seq_header.progressive_sequence = self.pop_read_data(1)
+            self.seq_header.field_coded_sequence = self.pop_read_data(1)
+            self.seq_header.library_stream_flag = self.pop_read_data(1)
+            if(self.seq_header.library_stream_flag == 1):
+                self.seq_header.library_picture_enable_flag = self.pop_read_data(1)
+                if(self.seq_header.library_picture_enable_flag==1):
+                    self.seq_header.duplicate_seq_header_flag = self.pop_read_data(1)
+            self.seq_header.marker_bit = self.pop_read_data(1)
+            self.seq_header.horizontal_size = self.pop_read_data(14)
+            self.seq_header.marker_bit = self.pop_read_data(1)
+            self.seq_header.vertical_size = self.pop_read_data(14)
+            self.seq_header.chroma_format = self.pop_read_data(2)
+            self.seq_header.sample_precision = self.pop_read_data(3)
+            if (self.seq_header.profile_id == 0x22):
+                self.seq_header.encoding_precision = self.pop_read_data(3)
+            self.seq_header.marker_bit = self.pop_read_data(1)
+            self.seq_header.aspect_ratio = self.pop_read_data(4)
+            self.seq_header.frame_rate_code = self.pop_read_data(4)
+            self.seq_header.marker_bit = self.pop_read_data(1)
+            self.seq_header.bit_rate_lower = self.pop_read_data(18)
+            self.seq_header.marker_bit = self.pop_read_data(1)
+            self.seq_header.bit_rate_upper = self.pop_read_data(12)
+            self.seq_header.low_delay = self.pop_read_data(1)
+            self.seq_header.temporal_id_enable_flag = self.pop_read_data(1)
+            self.seq_header.marker_bit = self.pop_read_data(1)
+            self.seq_header.bbv_buffer_size = self.pop_read_data(18)
+            self.seq_header.marker_bit = self.pop_read_data(1)
+            self.seq_header.max_dpb_minus1 = self.pop_read_data(4)
+            self.seq_header.rpl1_idx_exist_flag = self.pop_read_data(1)
+            self.seq_header.rpl1_same_as_rpl0_flag = self.pop_read_data(1)
+            self.seq_header.marker_bit = self.pop_read_data(4)
+            self.seq_header.num_ref_pic_list_set[0] = self.read_ue()
+            for i in range(self.seq_header.num_ref_pic_list_set[0]):
+                ReferencePictureListSet = reference_picture_list_set(0,i,self.seq_header.library_picture_enable_flag)
+                self.List_ReferencePictureListSet.append(ReferencePictureListSet)
+            if(self.seq_header.rpl1_same_as_rpl0_flag==0):
+                self.seq_header.num_ref_pic_list_set[1] = self.read_ue()
+                for i in range(self.seq_header.num_ref_pic_list_set[1]):
+                    ReferencePictureListSet = reference_picture_list_set(1,i,self.seq_header.library_picture_enable_flag)
+                    self.List_ReferencePictureListSet.append(ReferencePictureListSet)
+            self.seq_header.num_ref_default_active_minus1[0] = self.read_ue()
+            self.seq_header.num_ref_default_active_minus1[1] = self.read_ue()
+            self.seq_header.log2_lcu_size_minus2 = self.pop_read_data(3)
+            self.seq_header.log2_min_cu_size_minus2 = self.pop_read_data(2)
+            self.seq_header.log2_max_part_ratio_minus2 = self.pop_read_data(2)
+            self.seq_header.max_split_times_minus6 = self.pop_read_data(3)
+            self.seq_header.log2_min_qt_size_minus2 = self.pop_read_data(3)
+            self.seq_header.log2_max_bt_size_minus2 = self.pop_read_data(3)
+            self.seq_header.log2_max_eqt_size_minus3 = self.pop_read_data(2)
+            self.seq_header.marker_bit = self.pop_read_data(1)
+            self.seq_header.weight_quant_enable_flag = self.pop_read_data(1)
+            if(self.seq_header.weight_quant_enable_flag):
+                self.seq_header.load_seq_weight_quant_data_flag = self.pop_read_data(1)
+                if(self.seq_header.load_seq_weight_quant_data_flag):
+                    WQM = weight_quant_matrix()
+                    self.List_WeightQuantMatrix.append(WQM)
+            self.seq_header.secondary_transform_enable_flag=self.pop_read_data(1)
+            self.seq_header.sample_adaptive_offset_enable_flag = self.pop_read_data(1)
+            self.seq_header.adaptive_leveling_filter_enable_flag = self.pop_read_data(1)
+            self.seq_header.affine_enable_flag = self.pop_read_data(1)
+            self.seq_header.smvd_enable_flag = self.pop_read_data(1)
+            self.seq_header.ipcm_enable_flag = self.pop_read_data(1)
+            self.seq_header.amvr_enable_flag = self.pop_read_data(1)
+            self.seq_header.num_of_hmvp_cand = self.pop_read_data(4)
+            self.seq_header.umve_enable_flag = self.pop_read_data(1)
+            if(self.seq_header.num_of_hmvp_cand&self.seq_header.amvr_enable_flag):
+                self.seq_header.emvr_enable_flag = self.pop_read_data(1)
+            self.seq_header.ipf_enable_flag = self.pop_read_data(1)
+            self.seq_header.tscpm_enable_flag = self.pop_read_data(1)
+            self.seq_header.marker_bit = self.pop_read_data(1)
+            self.seq_header.dt_enable_flag = self.pop_read_data(1)
+            if(self.seq_header.dt_enable_flag):
+                self.seq_header.log2_max_dt_size_minus4 = self.pop_read_data(2)
+            self.seq_header.pbt_enable_flag = self.pop_read_data(1)
+            if(self.seq_header.low_delay==0):
+                self.seq_header.output_reorder_delay=self.pop_read_data(5)
+            self.seq_header.cross_patch_loopfilter_enable_flag = self.pop_read_data(1)
+            self.seq_header.ref_colocated_patch_flag = self.pop_read_data(1)
+            self.seq_header.stable_patch_flag = self.pop_read_data(1)
+            if(self.seq_header.stable_patch_flag):
+                self.seq_header.uniform_patch_flag = self.pop_read_data(1)
+                if(self.seq_header.uniform_patch_flag):
+                    self.seq_header.marker_bit = self.pop_read_data(1)
+                    self.seq_header.patch_width_minus1 = self.read_ue()
+                    self.seq_header.patch_height_minus1 = self.read_ue()
+            self.seq_header.reserved_bits = self.pop_read_data(2)
+            
+
+
 
     '''
     for (j = 0; j < NumRefPicListSet[0]; j++) 
@@ -155,56 +264,56 @@ class reference_picture_list_set:
     扩展和用户数据定义
     '''
     def extension_and_user_data(i):
-        while ((next_bits(32) == extension_start_code) | (next_bits(32) == user_data_start_code)):
-            if (next_bits(32) == extension_start_code):#0x000001B5
+        while ((get_read_data(32) == dict('extension_start_code')) | (get_read_data(32) == dict('user_data_start_code'))):
+            if (pop_read_data(32) == dict('extension_start_code')):#0x000001B5
                 extension_data(i)
-            if (next_bits(32) == user_data_start_code)#0x000001B2
+            if (pop_read_data(32) == dict('user_data_start_code'))#0x000001B2
                 user_data()
     '''
     扩展数据定义
     '''
     def extension_data(i):
-        while ((next_bits(32) == extension_start_code):#0x000001B5
+        while ((get_read_data(32) == extension_start_code):#0x000001B5
             if(i==0):
-                if(next_bits(4)== '0010'):#序列显示扩展 
+                if(pop_read_data(4)== '0010'):#序列显示扩展 
                     sequence_display_extension()
-                else if (next_bits(4) == '0011'): # 时域可伸缩扩展 
+                else if (pop_read_data(4) == '0011'): # 时域可伸缩扩展 
                     temporal_scalability_extension()
-                else if (next_bits(4) == '0100'): # 版权扩展 
+                else if (pop_read_data(4) == '0100'): # 版权扩展 
                     copyright_extension()
-                else if (next_bits(4) == '0110'): 
+                else if (pop_read_data(4) == '0110'): 
                     cei_extension()
-                else if (next_bits(4) == '1010'): # 目标设备显示和内容元数据扩展 
+                else if (pop_read_data(4) == '1010'): # 目标设备显示和内容元数据扩展 
                     mastering_display_and_content_metadata_extension()
-                else if (next_bits(4) == '1011'): # 摄像机参数扩展 
+                else if (pop_read_data(4) == '1011'): # 摄像机参数扩展 
                     camera_parameters_extension()
-                else if (next_bits(4) == '1101'): # 参考知识图像扩展
+                else if (pop_read_data(4) == '1101'): # 参考知识图像扩展
                     cross_random_access_point_reference_extension()
                 else:
-                    while (next_bits(24) != '0000 0000 0000 0000 0000 0001')
+                    while (pop_read_data(24) != '0000 0000 0000 0000 0000 0001')
                         reserved_extension_data_byte
             else:#图像头之后
-                if (next_bits(4) == '0100'): # 版权扩展 
+                if (pop_read_data(4) == '0100'): # 版权扩展 
                     copyright_extension()
-                else if ( next_bits(4) == '0101' ): # 高动态范围图像元数据扩展
+                else if ( pop_read_data(4) == '0101' ): # 高动态范围图像元数据扩展
                     hdr_dynamic_metadata_extension()
-                else if (next_bits(4) == '0111'): # 图像显示扩展
+                else if (pop_read_data(4) == '0111'): # 图像显示扩展
                     picture_display_extension()
-                else if (next_bits(4) == '1011'): # 摄像机参数扩展
+                else if (pop_read_data(4) == '1011'): # 摄像机参数扩展
                     camera_parameters_extension()
-                else if (next_bits(4) == '1100'): #感兴趣区域参数扩展
+                else if (pop_read_data(4) == '1100'): #感兴趣区域参数扩展
                     roi_parameters_extension()
                 else:
-                    while (next_bits(24) != '0000 0000 0000 0000 0000 0001'):
+                    while (pop_read_data(24) != '0000 0000 0000 0000 0000 0001'):
                         reserved_extension_data_byte
-'''
-用户数据定义
-'''
-class user_data:
-    def __init__(self):
-        self.user_data_start_code=32#0x000001B2
+    '''
+    用户数据定义
+    '''
+    def user_data():
         while (next_bits(24) != '0000 0000 0000 0000 0000 0001'):
-            self.user_data=8
+            user_data=pop_read_data(8)
+            self.List_UserData.append(user_data)
+    
 
 '''
 序列显示扩展定义
@@ -618,11 +727,10 @@ class picture_data:
         patch()
         while(next_bits(32) == patch_start_code):#000001+0x00～0x7F(patch_index)
             patch()
-'''
-片定义
-'''
-class patch:
-    def __init__(seq_data):
+    '''
+    片定义
+    '''
+    def patch()
         patch_start_code#000001+0x00～0x7F(patch_index)
         if (fixed_picture_qp_flag == '0') :
             fixed_patch_qp_flag
