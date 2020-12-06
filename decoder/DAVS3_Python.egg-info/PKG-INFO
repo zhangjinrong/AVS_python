@@ -1,0 +1,11 @@
+Metadata-Version: 1.0
+Name: DAVS3-Python
+Version: 1.0
+Summary: AVS3 decoder achieved by Python
+Home-page: https://github.com/zhangjinrong/AVS_python
+Author: ZhangJinrong
+Author-email: solrong@qq.com
+License: MIT Licence
+Description: AVS3 decoder achieved by Python
+Keywords: AVS3
+Platform: any

@@ -19,6 +19,4 @@ def write_file_open(file_name):
 def write_file_close(f):
     f.close()
 
-'''
-'''
-read_next_string(f,len):
+
