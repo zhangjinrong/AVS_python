@@ -1,8 +1,10 @@
+from  de_core.message_storage  import  *
+
 '''
     this function read file
 '''
 def input_decoder_file(file_name):
-    f = open(file_name, 'rb')
+    f = open(file_name, 'r')
     file_string = f.read()
     return file_string
 
@@ -18,5 +20,7 @@ def write_file_open(file_name):
 '''
 def write_file_close(f):
     f.close()
+
+
 
 

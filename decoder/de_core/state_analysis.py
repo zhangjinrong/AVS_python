@@ -1,13 +1,13 @@
 import logging
 #logging.basicConfig(format='%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s',level=logging.DEBUG)
-from  de_core.message_storage  import  *
+from  de_core.file_rw  import  *
 
 
 class data_analysis:
     def __init__(self,input_file):
         self.input_file = input_file
         self.pointer_position = 0
-        #self.seq_header = sequence_header(self.input_file,self.pointer_position )
+        self.video_seq = video_sequence(self.input_file)
         self.marker_bit = 0
         self.List_ReferencePictureListSet = []
         self.List_WeightQuantMatrix = []

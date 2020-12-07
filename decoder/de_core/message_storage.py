@@ -1,62 +1,65 @@
 # This file is a basic file, store video message 
 # store video_sequence message, instantiation it and add to main function
 
-
-
+from  de_core.file_rw  import  *
 
 #视频序列定义,这是整个视频解码的最高层
-
+dict =  {
+    'video_sequence_start_code':'00000000000000000000000110110000',#0x000001B0,#视频序列起始码
+    'video_sequence_end_code':'00000000000000000000000110110001',#0x000001B1,
+    'user_data_start_code':'00000000000000000000000110110010',#0x000001B2,
+    'intra_picture_start_code':'00000000000000000000000110110011',#0x000001B3,
+    'extension_start_code':'00000000000000000000000110110101',#0x000001B5,
+    'inter_picture_start_code':'00000000000000000000000110110110',#0x000001B6,
+    'video_edit_code':'00000000000000000000000110110111',#0x000001B7,
+    'bbv_delay':'11111111111111111111111111111111',#0xFFFFFFFF,
+    '00': 'patch_start_code',#00-7F is patch_start_code
+    '8F': 'patch_end_code'
+    }
 class video_sequence:
     def __init__(self,input_file):
         self.data_file = input_file
         self.pointer_position = 0
-    def run():
-        while((get_read_data(32) != dict('video_sequence_end_code')) & (get_read_data(32) != dict('video_edit_code'))):
+        self.run()
+    def run(self):
+        #if(self.get_read_data(32) == dict['video_sequence_start_code']):
+        #    print('good')
+        SH = sequence_header(self.data_file,self.pointer_position)
+        SH.run()
+        extension_and_user_data(0,self.data_file,self.pointer_position)
+        '''
+        while((self.get_read_data(32) != dict['video_sequence_end_code']) & (self.get_read_data(32) != dict['video_edit_code'])):
             sequence_header(self.data_file,self.pointer_position)
             extension_and_user_data(0)
-            while((get_read_data(32) == dict('inter_picture_start_code')) | (get_read_data(32) == dict('intra_picture_start_code'))):
-                if (next_bits(32) == dict('intra_picture_start_code')):#0x000001B3
+            while((self.get_read_data(32) == dict['inter_picture_start_code']) | (self.get_read_data(32) == dict['intra_picture_start_code'])):
+                if (next_bits(32) == dict['intra_picture_start_code']):#0x000001B3
                     intra_picture_header()
                 else:
                     inter_picture_header()
                 extension_and_user_data(1)
-                picture_data( )
-        if (pop_read_data(32) == dict('intra_picture_start_code')):#0x000001B3
+                picture_data()
+        if (pop_read_data(32) == dict['intra_picture_start_code']):#0x000001B3
             video_sequence_end_code#0x000001B1
-        if (pop_read_data(32) == dict('intra_picture_start_code')):
+        if (pop_read_data(32) == dict['intra_picture_start_code']):
             video_edit_code #0x000001B7
-            
+        '''
+ 
     def pop_read_data(self,read_length):
-        string = self.input_file[pointer_position,pointer_position+read_length]
-        pointer_position = pointer_position + read_length
+        string = self.data_file[self.pointer_position:self.pointer_position+read_length]
+        self.pointer_position = self.pointer_position + read_length
         return string
 
     def get_read_data(self,read_length):
-        string = self.input_file[pointer_position,pointer_position+read_length]
+        string = self.data_file[self.pointer_position:self.pointer_position+read_length]
         return string
-
-'''
-
+        #return hex(int(string.hex(),16))
+        #return string.hex()
+        
 
 #序列头定义
-
-dict_sequence_header =  {
-    'video_sequence_start_code':0x000001B0,#起始码前缀
-    'bbv_delay':0xFFFFFFFF,
-    '00': 'patch_start_code',#00-7F is patch_start_code
-    '8F': 'patch_end_code',
-    'B0': 'video_sequence_start_code',#视频序列起始码
-    'B1': 'video_sequence_end_code',
-    'B2': 'user_data_start_code',
-    '000001B3': 'intra_picture_start_code',
-    'B5': 'extension_start_code',
-    'B6': 'inter_picture_start_code',
-    'B7': 'video_edit_code',
-    'FFFFFFFF': 'bbv_delay'
-    }
-
 class sequence_header:
     def __init__(self,input_file,pointer_position):
+        self.List_ReferencePictureListSet = []
         self.data_file = input_file
         self.pointer_position = pointer_position
         self.video_sequence_start_code=32#0x000001B0
@@ -90,9 +93,8 @@ class sequence_header:
         self.rpl1_idx_exist_flag=1
         self.rpl1_same_as_rpl0_flag=1
         self.marker_bit8=1
-        self.num_ref_pic_list_set[2]={0,0}
-        self.num_ref_default_active_minus1[0]=1
-        self.num_ref_default_active_minus1[1]=1
+        self.num_ref_pic_list_set = [2]
+        self.num_ref_default_active_minus1 = [0 for i in range(0,2)]
         self.log2_lcu_size_minus2=3
         self.log2_min_cu_size_minus2=2
         self.log2_max_part_ratio_minus2=2
@@ -128,152 +130,187 @@ class sequence_header:
         self.patch_width_minus1 =1
         self.patch_height_minus1=1
         self.reserved_bits=2
-    def run():
-        if(self.pop_read_data(32)==dict('video_sequence_start_code')):
-            self.seq_header.video_sequence_start_code = dict('video_sequence_start_code')
-            log.logger.info('video_sequence_start_code')
-            self.seq_header.profile_id = self.pop_read_data(8)
-            self.seq_header.level_id = self.pop_read_data(8)
-            self.seq_header.progressive_sequence = self.pop_read_data(1)
-            self.seq_header.field_coded_sequence = self.pop_read_data(1)
-            self.seq_header.library_stream_flag = self.pop_read_data(1)
-            if(self.seq_header.library_stream_flag == 1):
-                self.seq_header.library_picture_enable_flag = self.pop_read_data(1)
-                if(self.seq_header.library_picture_enable_flag==1):
-                    self.seq_header.duplicate_seq_header_flag = self.pop_read_data(1)
-            self.seq_header.marker_bit = self.pop_read_data(1)
-            self.seq_header.horizontal_size = self.pop_read_data(14)
-            self.seq_header.marker_bit = self.pop_read_data(1)
-            self.seq_header.vertical_size = self.pop_read_data(14)
-            self.seq_header.chroma_format = self.pop_read_data(2)
-            self.seq_header.sample_precision = self.pop_read_data(3)
-            if (self.seq_header.profile_id == 0x22):
-                self.seq_header.encoding_precision = self.pop_read_data(3)
-            self.seq_header.marker_bit = self.pop_read_data(1)
-            self.seq_header.aspect_ratio = self.pop_read_data(4)
-            self.seq_header.frame_rate_code = self.pop_read_data(4)
-            self.seq_header.marker_bit = self.pop_read_data(1)
-            self.seq_header.bit_rate_lower = self.pop_read_data(18)
-            self.seq_header.marker_bit = self.pop_read_data(1)
-            self.seq_header.bit_rate_upper = self.pop_read_data(12)
-            self.seq_header.low_delay = self.pop_read_data(1)
-            self.seq_header.temporal_id_enable_flag = self.pop_read_data(1)
-            self.seq_header.marker_bit = self.pop_read_data(1)
-            self.seq_header.bbv_buffer_size = self.pop_read_data(18)
-            self.seq_header.marker_bit = self.pop_read_data(1)
-            self.seq_header.max_dpb_minus1 = self.pop_read_data(4)
-            self.seq_header.rpl1_idx_exist_flag = self.pop_read_data(1)
-            self.seq_header.rpl1_same_as_rpl0_flag = self.pop_read_data(1)
-            self.seq_header.marker_bit = self.pop_read_data(4)
-            self.seq_header.num_ref_pic_list_set[0] = self.read_ue()
-            for i in range(self.seq_header.num_ref_pic_list_set[0]):
-                ReferencePictureListSet = reference_picture_list_set(0,i,self.seq_header.library_picture_enable_flag)
+        # 参考图像队列配置集定义
+        self.reference_to_library_enable_flag = 0
+        self.library_index_flag=[[[]]]
+        self.NumOfRefPic = [[]]
+        self.referenced_library_picture_index = [[[]]]
+        self.abs_delta_doi = [[[]]]
+        self.sign_delta_doi=[[[]]]
+        self.WeightQuantMatrix4x4=[[]]
+        self.WeightQuantMatrix8x8=[[]]
+        
+    def run(self):
+        if(self.pop_read_data(32)==dict['video_sequence_start_code']):
+            print('run sequence_header')
+            self.video_sequence_start_code = dict['video_sequence_start_code']
+            #log.logger.info('video_sequence_start_code')
+            self.profile_id = self.pop_read_data(8)
+            self.level_id = self.pop_read_data(8)
+            self.progressive_sequence = self.pop_read_data(1)
+            self.field_coded_sequence = self.pop_read_data(1)
+            self.library_stream_flag = self.pop_read_data(1)
+            if(self.library_stream_flag == '1'):
+                self.library_picture_enable_flag = self.pop_read_data(1)
+                if(self.library_picture_enable_flag=='1'):
+                    self.duplicate_seq_header_flag = self.pop_read_data(1)
+            self.marker_bit = self.pop_read_data(1)
+            self.horizontal_size = self.pop_read_data(14)
+            self.marker_bit = self.pop_read_data(1)
+            self.vertical_size = self.pop_read_data(14)
+            self.chroma_format = self.pop_read_data(2)
+            self.sample_precision = self.pop_read_data(3)
+            if (self.str_to_int(self.profile_id) == 0x22):
+                self.encoding_precision = self.pop_read_data(3)
+            self.marker_bit = self.pop_read_data(1)
+            self.aspect_ratio = self.pop_read_data(4)
+            self.frame_rate_code = self.pop_read_data(4)
+            self.marker_bit = self.pop_read_data(1)
+            self.bit_rate_lower = self.pop_read_data(18)
+            self.marker_bit = self.pop_read_data(1)
+            self.bit_rate_upper = self.pop_read_data(12)
+            self.low_delay = self.pop_read_data(1)
+            self.temporal_id_enable_flag = self.pop_read_data(1)
+            self.marker_bit = self.pop_read_data(1)
+            self.bbv_buffer_size = self.pop_read_data(18)
+            self.marker_bit = self.pop_read_data(1)
+            self.max_dpb_minus1 = self.pop_read_data(4)
+            self.rpl1_idx_exist_flag = self.pop_read_data(1)
+            self.rpl1_same_as_rpl0_flag = self.pop_read_data(1)
+            self.marker_bit = self.pop_read_data(4)
+            self.num_ref_pic_list_set[0] = self.read_ue()
+            self.NumOfRefPic = [[0 for i in range(self.num_ref_pic_list_set[0])] for j in range(self.num_ref_pic_list_set[0])]
+            for i in range(self.num_ref_pic_list_set[0]):
+                ReferencePictureListSet = reference_picture_list_set(0,i,self.library_picture_enable_flag)
                 self.List_ReferencePictureListSet.append(ReferencePictureListSet)
-            if(self.seq_header.rpl1_same_as_rpl0_flag==0):
-                self.seq_header.num_ref_pic_list_set[1] = self.read_ue()
-                for i in range(self.seq_header.num_ref_pic_list_set[1]):
-                    ReferencePictureListSet = reference_picture_list_set(1,i,self.seq_header.library_picture_enable_flag)
+            if(self.rpl1_same_as_rpl0_flag==0):
+                self.num_ref_pic_list_set[1] = self.read_ue()
+                for i in range(self.num_ref_pic_list_set[1]):
+                    ReferencePictureListSet = reference_picture_list_set(1,i,self.library_picture_enable_flag)
                     self.List_ReferencePictureListSet.append(ReferencePictureListSet)
-            self.seq_header.num_ref_default_active_minus1[0] = self.read_ue()
-            self.seq_header.num_ref_default_active_minus1[1] = self.read_ue()
-            self.seq_header.log2_lcu_size_minus2 = self.pop_read_data(3)
-            self.seq_header.log2_min_cu_size_minus2 = self.pop_read_data(2)
-            self.seq_header.log2_max_part_ratio_minus2 = self.pop_read_data(2)
-            self.seq_header.max_split_times_minus6 = self.pop_read_data(3)
-            self.seq_header.log2_min_qt_size_minus2 = self.pop_read_data(3)
-            self.seq_header.log2_max_bt_size_minus2 = self.pop_read_data(3)
-            self.seq_header.log2_max_eqt_size_minus3 = self.pop_read_data(2)
-            self.seq_header.marker_bit = self.pop_read_data(1)
-            self.seq_header.weight_quant_enable_flag = self.pop_read_data(1)
-            if(self.seq_header.weight_quant_enable_flag):
-                self.seq_header.load_seq_weight_quant_data_flag = self.pop_read_data(1)
-                if(self.seq_header.load_seq_weight_quant_data_flag):
-                    WQM = weight_quant_matrix()
-                    self.List_WeightQuantMatrix.append(WQM)
-            self.seq_header.secondary_transform_enable_flag=self.pop_read_data(1)
-            self.seq_header.sample_adaptive_offset_enable_flag = self.pop_read_data(1)
-            self.seq_header.adaptive_leveling_filter_enable_flag = self.pop_read_data(1)
-            self.seq_header.affine_enable_flag = self.pop_read_data(1)
-            self.seq_header.smvd_enable_flag = self.pop_read_data(1)
-            self.seq_header.ipcm_enable_flag = self.pop_read_data(1)
-            self.seq_header.amvr_enable_flag = self.pop_read_data(1)
-            self.seq_header.num_of_hmvp_cand = self.pop_read_data(4)
-            self.seq_header.umve_enable_flag = self.pop_read_data(1)
-            if(self.seq_header.num_of_hmvp_cand&self.seq_header.amvr_enable_flag):
-                self.seq_header.emvr_enable_flag = self.pop_read_data(1)
-            self.seq_header.ipf_enable_flag = self.pop_read_data(1)
-            self.seq_header.tscpm_enable_flag = self.pop_read_data(1)
-            self.seq_header.marker_bit = self.pop_read_data(1)
-            self.seq_header.dt_enable_flag = self.pop_read_data(1)
-            if(self.seq_header.dt_enable_flag):
-                self.seq_header.log2_max_dt_size_minus4 = self.pop_read_data(2)
-            self.seq_header.pbt_enable_flag = self.pop_read_data(1)
-            if(self.seq_header.low_delay==0):
-                self.seq_header.output_reorder_delay=self.pop_read_data(5)
-            self.seq_header.cross_patch_loopfilter_enable_flag = self.pop_read_data(1)
-            self.seq_header.ref_colocated_patch_flag = self.pop_read_data(1)
-            self.seq_header.stable_patch_flag = self.pop_read_data(1)
-            if(self.seq_header.stable_patch_flag):
-                self.seq_header.uniform_patch_flag = self.pop_read_data(1)
-                if(self.seq_header.uniform_patch_flag):
-                    self.seq_header.marker_bit = self.pop_read_data(1)
-                    self.seq_header.patch_width_minus1 = self.read_ue()
-                    self.seq_header.patch_height_minus1 = self.read_ue()
-            self.seq_header.reserved_bits = self.pop_read_data(2)
             
+            self.num_ref_default_active_minus1[0] = self.read_ue()
+            self.num_ref_default_active_minus1[1] = self.read_ue()
+            self.log2_lcu_size_minus2 = self.pop_read_data(3)
+            self.log2_min_cu_size_minus2 = self.pop_read_data(2)
+            self.log2_max_part_ratio_minus2 = self.pop_read_data(2)
+            self.max_split_times_minus6 = self.pop_read_data(3)
+            self.log2_min_qt_size_minus2 = self.pop_read_data(3)
+            self.log2_max_bt_size_minus2 = self.pop_read_data(3)
+            self.log2_max_eqt_size_minus3 = self.pop_read_data(2)
+            self.marker_bit = self.pop_read_data(1)
+            self.weight_quant_enable_flag = self.pop_read_data(1)
+            if(self.weight_quant_enable_flag):
+                self.load_seq_weight_quant_data_flag = self.pop_read_data(1)
+                if(self.load_seq_weight_quant_data_flag):
+                    self.weight_quant_matrix()
+                    #WQM = weight_quant_matrix()
+                    #self.List_WeightQuantMatrix.append(WQM)
+            self.secondary_transform_enable_flag=self.pop_read_data(1)
+            self.sample_adaptive_offset_enable_flag = self.pop_read_data(1)
+            self.adaptive_leveling_filter_enable_flag = self.pop_read_data(1)
+            self.affine_enable_flag = self.pop_read_data(1)
+            self.smvd_enable_flag = self.pop_read_data(1)
+            self.ipcm_enable_flag = self.pop_read_data(1)
+            self.amvr_enable_flag = self.pop_read_data(1)
+            self.num_of_hmvp_cand = self.pop_read_data(4)
+            self.umve_enable_flag = self.pop_read_data(1)
+            if((self.num_of_hmvp_cand=='1') & (self.amvr_enable_flag=='1')):
+                self.emvr_enable_flag = self.pop_read_data(1)
+            self.ipf_enable_flag = self.pop_read_data(1)
+            self.tscpm_enable_flag = self.pop_read_data(1)
+            self.marker_bit = self.pop_read_data(1)
+            self.dt_enable_flag = self.pop_read_data(1)
+            if(self.dt_enable_flag):
+                self.log2_max_dt_size_minus4 = self.pop_read_data(2)
+            self.pbt_enable_flag = self.pop_read_data(1)
+            if(self.low_delay==0):
+                self.output_reorder_delay=self.pop_read_data(5)
+            self.cross_patch_loopfilter_enable_flag = self.pop_read_data(1)
+            self.ref_colocated_patch_flag = self.pop_read_data(1)
+            self.stable_patch_flag = self.pop_read_data(1)
+            if(self.stable_patch_flag):
+                self.uniform_patch_flag = self.pop_read_data(1)
+                if(self.uniform_patch_flag):
+                    self.marker_bit = self.pop_read_data(1)
+                    self.patch_width_minus1 = self.read_ue()
+                    self.patch_height_minus1 = self.read_ue()
+            self.reserved_bits = self.pop_read_data(2)
+            
+    # 参考图像队列配置集定义
+    def reference_picture_list_set(self,mlist,rpls):
+        if(self.library_picture_enable_flag):
+            self.reference_to_library_enable_flag = self.pop_read_data(1)
+        self.NumOfRefPic[mlist][rpls] = self.read_ue()
+        self.library_index_flag = [[[0 for k in range(0,self.num_ref_pic_list_set[0])] for j in range(0,self.num_ref_pic_list_set[0])] for i in range(0,self.NumOfRefPic[mlist][rpls])]
+        for i in range((self.NumOfRefPic[mlist][rpls])):
+            if (self.reference_to_library_enable_flag):
+                self.library_index_flag[mlist][rpls][i] = self.pop_read_data(1)
+            if(self.library_index_flag[mlist][rpls][i]):
+                self.referenced_library_picture_index[mlist][rpls][i] = self.read_ue()
+            else:
+                self.abs_delta_doi[mlist][rpls][i] = self.read_ue()
+                if(abs_delta_doi[mlist][rpls][i] > 0):
+                    self.sign_delta_doi[mlist][rpls][i] = self.pop_read_data(1)
 
-
-
-    
-    for (j = 0; j < NumRefPicListSet[0]; j++) 
-        {reference_picture_list_set(0, j)}
-    if (! Rpl1SameAsRpl0Flag) {
-        for (j = 0; j < NumRefPicListSet[1]; j++) 
-        {reference_picture_list_set(0, j)}
-    }
-   # 参考图像队列配置集定义
-    
-class reference_picture_list_set:
-    def __init__(self,rpls):
-        if(LibraryPictureEnableFlag):
-            reference_to_library_enable_flag
-        for i in range(len(NumOfRefPic[list][rpls])):
-            if (ReferenceToLibraryEnableFlag):
-                if(LibraryIndexFlag[list][rpls][i]):
-                    referenced_library_picture_index[list][rpls][i]
-                else:
-                    abs_delta_doi[list][rpls][i]
-                    if(abs_delta_doi[list][rpls][i] > 0):
-                        sign_delta_doi[list][rpls][i]
-
-    
-    if (load_seq_weight_quant_data_flag == '1')
-    {weight_quant_matrix()}
    # 自定义加权量化矩阵定义
-    
-    def weight_quant_matrix():
+    def weight_quant_matrix(self):
         for sizeId in range(2):
             WQMSize = 1 << (sizeId+2)
+            self.WeightQuantMatrix4x4= [[0 for j in range(0,WQMSize)] for i in range(0,WQMSize)]
+            self.WeightQuantMatrix8x8= [[0 for j in range(0,WQMSize)] for i in range(0,WQMSize)]
             for i in range(WQMSize):
                 for j in range(WQMSize):
+                    weight_quant_coeff = self.read_ue()
                     if(sizeId == 0):
-                        WeightQuantMatrix4x4[i][j] = WeightQuantCoeff
+                        self.WeightQuantMatrix4x4[i][j] = weight_quant_coeff
                     else:
-                        WeightQuantMatrix8x8[i][j] = WeightQuantCoeff
+                        self.WeightQuantMatrix8x8[i][j] = weight_quant_coeff
+    def pop_read_data(self,read_length):
+        string = self.data_file[self.pointer_position:self.pointer_position+read_length]
+        self.pointer_position = self.pointer_position + read_length
+        return string
+
+    def get_read_data(self,read_length):
+        string = self.data_file[self.pointer_position:self.pointer_position+read_length]
+        return string
+    def read_ue(self):
+        string_size=0
+        while(self.pop_read_data(1)=='0'):
+            string_size = string_size+1
+        self.pop_read_data(1)
+        if(string_size==0):
+            return 0
+        else:
+            return (self.str_to_int(self.pop_read_data(string_size)))
+        
+    def str_to_int(self,str):
+        data = 0
+        for i in range(len(str)):
+            data = data*2 + int(str[i])
+        return data
+
+# 扩展和用户数据定义
     
-   # 扩展和用户数据定义
-    
-    def extension_and_user_data(i):
-        while ((get_read_data(32) == dict('extension_start_code')) | (get_read_data(32) == dict('user_data_start_code'))):
-            if (pop_read_data(32) == dict('extension_start_code')):#0x000001B5
+class extension_and_user_data:
+    def __init__(self,i,data_file,pointer_position):
+        self.data_file=data_file
+        self.pointer_position=pointer_position
+        self.List_UserData = []
+        self.extension_data(0)
+        
+        while ((self.get_read_data(32) == dict['extension_start_code']) | (self.get_read_data(32) == dict['user_data_start_code'])):
+            if (pop_read_data(32) == dict['extension_start_code']):#0x000001B5
                 extension_data(i)
-            if (pop_read_data(32) == dict('user_data_start_code')):#0x000001B2
+                print('extension_data')
+            if (pop_read_data(32) == dict['user_data_start_code']):#0x000001B2
                 user_data()
+                print('user_data')
     
     #扩展数据定义
     
-    def extension_data(i):
-        while ((get_read_data(32) == extension_start_code)):#0x000001B5
+    def extension_data(self,i):
+        while ((self.get_read_data(32) == "extension_start_code")):#0x000001B5
             if(i==0):
                 if(pop_read_data(4)== '0010'):#序列显示扩展 
                     sequence_display_extension()
@@ -308,14 +345,39 @@ class reference_picture_list_set:
                         reserved_extension_data_byte
     
     #用户数据定义
-    
-    def user_data():
-        while (next_bits(24) != '0000 0000 0000 0000 0000 0001'):
-            user_data=pop_read_data(8)
+    def user_data(self):
+        while (self.pop_read_data(24) != '0000 0000 0000 0000 0000 0001'):
+            user_data=self.pop_read_data(8)
             self.List_UserData.append(user_data)
+
+    def pop_read_data(self,read_length):
+        string = self.data_file[self.pointer_position:self.pointer_position+read_length]
+        self.pointer_position = self.pointer_position + read_length
+        return string
+
+    def get_read_data(self,read_length):
+        string = self.data_file[self.pointer_position:self.pointer_position+read_length]
+        return string
+    def read_ue(self):
+        string_size=0
+        while(self.pop_read_data(1)=='0'):
+            string_size = string_size+1
+        self.pop_read_data(1)
+        if(string_size==0):
+            return 0
+        else:
+            return (self.str_to_int(self.pop_read_data(string_size)))
+        
+    def str_to_int(self,str):
+        data = 0
+        for i in range(len(str)):
+            data = data*2 + int(str[i])
+        return data
+    def return_position(self):
+        return self.pointer_position
     
 
-
+'''
 #序列显示扩展定义
 
 class sequence_display_extension:
@@ -336,10 +398,9 @@ class sequence_display_extension:
             self.td_packing_mode=8
             self.view_reverse_flag=1
 
-    
-    #时域可伸缩扩展定义
-     
-    def temporal_scalability_extension():
+    #时域可伸缩扩展定义  
+class temporal_scalability_extension():
+    def __init__():
         extension_id=4#0010
         num_of_temporal_level_minus1=3
         for i in range(num_of_temporal_level_minus1):
