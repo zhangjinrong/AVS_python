@@ -26,7 +26,7 @@ class video_sequence:
         #    print('good')
         SH = sequence_header(self.data_file,self.pointer_position)
         SH.run()
-        extension_and_user_data(0,self.data_file,self.pointer_position)
+        #extension_and_user_data(0,self.data_file,self.pointer_position)
         '''
         while((self.get_read_data(32) != dict['video_sequence_end_code']) & (self.get_read_data(32) != dict['video_edit_code'])):
             sequence_header(self.data_file,self.pointer_position)
@@ -93,8 +93,8 @@ class sequence_header:
         self.rpl1_idx_exist_flag=1
         self.rpl1_same_as_rpl0_flag=1
         self.marker_bit8=1
-        self.num_ref_pic_list_set = [2]
-        self.num_ref_default_active_minus1 = [0 for i in range(0,2)]
+        self.num_ref_pic_list_set =[0 for i in range(2)] 
+        self.num_ref_default_active_minus1 = [0 for i in range(2)]
         self.log2_lcu_size_minus2=3
         self.log2_min_cu_size_minus2=2
         self.log2_max_part_ratio_minus2=2
@@ -132,129 +132,146 @@ class sequence_header:
         self.reserved_bits=2
         # 参考图像队列配置集定义
         self.reference_to_library_enable_flag = 0
-        self.library_index_flag=[[[]]]
-        self.NumOfRefPic = [[]]
-        self.referenced_library_picture_index = [[[]]]
-        self.abs_delta_doi = [[[]]]
-        self.sign_delta_doi=[[[]]]
+        self.library_index_flag=[0 for i in range(2)]
+        self.NumOfRefPic = [0 for i in range(2)]
+        self.referenced_library_picture_index = [0 for i in range(2)]
+        self.abs_delta_doi = [0 for i in range(2)]
+        self.sign_delta_doi=[0 for i in range(2)]
         self.WeightQuantMatrix4x4=[[]]
         self.WeightQuantMatrix8x8=[[]]
         
     def run(self):
-        if(self.pop_read_data(32)==dict['video_sequence_start_code']):
-            print('run sequence_header')
-            self.video_sequence_start_code = dict['video_sequence_start_code']
-            #log.logger.info('video_sequence_start_code')
-            self.profile_id = self.pop_read_data(8)
-            self.level_id = self.pop_read_data(8)
-            self.progressive_sequence = self.pop_read_data(1)
-            self.field_coded_sequence = self.pop_read_data(1)
-            self.library_stream_flag = self.pop_read_data(1)
-            if(self.library_stream_flag == '1'):
-                self.library_picture_enable_flag = self.pop_read_data(1)
+        if(self.get_read_data(32)==dict['video_sequence_start_code']):
+            print('position....................',self.pointer_position)
+            self.video_sequence_start_code = self.assign_data('video_sequence_start_code',32)
+            self.profile_id = self.assign_data('profile_id',8)
+            self.level_id = self.assign_data('level_id',8)
+            self.progressive_sequence = self.assign_data('progressive_sequence',1)
+            self.field_coded_sequence = self.assign_data('field_coded_sequence',1)
+            self.library_stream_flag = self.assign_data('library_stream_flag',1)
+            if(self.library_stream_flag == '0'):
+                self.library_picture_enable_flag = self.assign_data('library_picture_enable_flag',1)
                 if(self.library_picture_enable_flag=='1'):
-                    self.duplicate_seq_header_flag = self.pop_read_data(1)
-            self.marker_bit = self.pop_read_data(1)
-            self.horizontal_size = self.pop_read_data(14)
-            self.marker_bit = self.pop_read_data(1)
-            self.vertical_size = self.pop_read_data(14)
-            self.chroma_format = self.pop_read_data(2)
-            self.sample_precision = self.pop_read_data(3)
-            if (self.str_to_int(self.profile_id) == 0x22):
-                self.encoding_precision = self.pop_read_data(3)
-            self.marker_bit = self.pop_read_data(1)
-            self.aspect_ratio = self.pop_read_data(4)
-            self.frame_rate_code = self.pop_read_data(4)
-            self.marker_bit = self.pop_read_data(1)
-            self.bit_rate_lower = self.pop_read_data(18)
-            self.marker_bit = self.pop_read_data(1)
-            self.bit_rate_upper = self.pop_read_data(12)
-            self.low_delay = self.pop_read_data(1)
-            self.temporal_id_enable_flag = self.pop_read_data(1)
-            self.marker_bit = self.pop_read_data(1)
-            self.bbv_buffer_size = self.pop_read_data(18)
-            self.marker_bit = self.pop_read_data(1)
-            self.max_dpb_minus1 = self.pop_read_data(4)
-            self.rpl1_idx_exist_flag = self.pop_read_data(1)
-            self.rpl1_same_as_rpl0_flag = self.pop_read_data(1)
-            self.marker_bit = self.pop_read_data(4)
+                    self.duplicate_seq_header_flag = self.assign_data('duplicate_seq_header_flag',1)
+            self.marker_bit = self.assign_data('marker_bit',1)
+            self.horizontal_size = self.assign_data('horizontal_size',14)
+            self.marker_bit = self.assign_data('marker_bit',1)
+            self.vertical_size = self.assign_data('vertical_size',14)
+            self.chroma_format = self.assign_data('chroma_format',2)
+            self.sample_precision = self.assign_data('sample_precision',3)
+            if ((self.profile_id) == '22'):
+                self.encoding_precision = self.assign_data('encoding_precision',3)  
+            self.marker_bit = self.assign_data('marker_bit',1)
+            self.aspect_ratio = self.assign_data('aspect_ratio',4)
+            self.frame_rate_code = self.assign_data('frame_rate_code',4)
+            self.marker_bit = self.assign_data('marker_bit',1)
+            self.bit_rate_lower = self.assign_data('bit_rate_lower',18)
+            self.marker_bit = self.assign_data('marker_bit',1)
+            self.bit_rate_upper = self.assign_data('bit_rate_upper',12)
+            self.low_delay = self.assign_data('low_delay',1)
+            self.temporal_id_enable_flag = self.assign_data('temporal_id_enable_flag',1)
+            self.marker_bit = self.assign_data('marker_bit',1)
+            self.bbv_buffer_size = self.assign_data('bbv_buffer_size',18)
+            self.marker_bit = self.assign_data('marker_bit',1)
+            self.max_dpb_minus1 = self.assign_data('max_dpb_minus1',4)
+            self.rpl1_idx_exist_flag = self.assign_data('rpl1_idx_exist_flag',1)
+            self.rpl1_same_as_rpl0_flag = self.assign_data('rpl1_same_as_rpl0_flag',1)
+            self.marker_bit = self.assign_data('marker_bit',1)
+            print('position....................',self.pointer_position)
             self.num_ref_pic_list_set[0] = self.read_ue()
-            self.NumOfRefPic = [[0 for i in range(self.num_ref_pic_list_set[0])] for j in range(self.num_ref_pic_list_set[0])]
-            for i in range(self.num_ref_pic_list_set[0]):
-                ReferencePictureListSet = reference_picture_list_set(0,i,self.library_picture_enable_flag)
-                self.List_ReferencePictureListSet.append(ReferencePictureListSet)
-            if(self.rpl1_same_as_rpl0_flag==0):
+            print('position....................',self.pointer_position)
+            print('num_ref_pic_list_set[0]  ',((self.num_ref_pic_list_set[0])))
+            self.NumOfRefPic[0] = [0 for i in range(self.num_ref_pic_list_set[0])]
+            #=======================================
+            for i in range(int(self.num_ref_pic_list_set[0])):
+                self.reference_picture_list_set(0,i)
+            if(self.rpl1_same_as_rpl0_flag=='0'):
                 self.num_ref_pic_list_set[1] = self.read_ue()
-                for i in range(self.num_ref_pic_list_set[1]):
-                    ReferencePictureListSet = reference_picture_list_set(1,i,self.library_picture_enable_flag)
-                    self.List_ReferencePictureListSet.append(ReferencePictureListSet)
-            
+                print('num_ref_pic_list_set[1]    ',self.num_ref_pic_list_set[1])
+                self.NumOfRefPic[1] = [0 for i in range(self.num_ref_pic_list_set[1])]
+                for i in range(int(self.num_ref_pic_list_set[1])):
+                    self.reference_picture_list_set(1,i)
             self.num_ref_default_active_minus1[0] = self.read_ue()
+            print('num_ref_default_active_minus1[0]  ',((self.num_ref_default_active_minus1[0])))
             self.num_ref_default_active_minus1[1] = self.read_ue()
-            self.log2_lcu_size_minus2 = self.pop_read_data(3)
-            self.log2_min_cu_size_minus2 = self.pop_read_data(2)
-            self.log2_max_part_ratio_minus2 = self.pop_read_data(2)
-            self.max_split_times_minus6 = self.pop_read_data(3)
-            self.log2_min_qt_size_minus2 = self.pop_read_data(3)
-            self.log2_max_bt_size_minus2 = self.pop_read_data(3)
-            self.log2_max_eqt_size_minus3 = self.pop_read_data(2)
-            self.marker_bit = self.pop_read_data(1)
-            self.weight_quant_enable_flag = self.pop_read_data(1)
-            if(self.weight_quant_enable_flag):
-                self.load_seq_weight_quant_data_flag = self.pop_read_data(1)
-                if(self.load_seq_weight_quant_data_flag):
+            print('num_ref_default_active_minus1[1]  ',((self.num_ref_default_active_minus1[1])))
+            self.log2_lcu_size_minus2 = self.assign_data('log2_lcu_size_minus2',3)
+            self.log2_min_cu_size_minus2 = self.assign_data('log2_min_cu_size_minus2',2)
+            self.log2_max_part_ratio_minus2 = self.assign_data('log2_max_part_ratio_minus2',2)
+            self.max_split_times_minus6 = self.assign_data('max_split_times_minus6',3)
+            self.log2_min_qt_size_minus2 = self.assign_data('log2_min_qt_size_minus2',3)
+            self.log2_max_bt_size_minus2 = self.assign_data('log2_max_bt_size_minus2',3)
+            self.log2_max_eqt_size_minus3 = self.assign_data('log2_max_eqt_size_minus3',2)
+            self.marker_bit = self.assign_data('marker_bit',1)
+            self.weight_quant_enable_flag = self.assign_data('weight_quant_enable_flag',1)
+            if(self.weight_quant_enable_flag=='1'):
+                self.load_seq_weight_quant_data_flag = self.assign_data('load_seq_weight_quant_data_flag',1)
+                if(self.load_seq_weight_quant_data_flag=='1'):
                     self.weight_quant_matrix()
-                    #WQM = weight_quant_matrix()
-                    #self.List_WeightQuantMatrix.append(WQM)
-            self.secondary_transform_enable_flag=self.pop_read_data(1)
-            self.sample_adaptive_offset_enable_flag = self.pop_read_data(1)
-            self.adaptive_leveling_filter_enable_flag = self.pop_read_data(1)
-            self.affine_enable_flag = self.pop_read_data(1)
-            self.smvd_enable_flag = self.pop_read_data(1)
-            self.ipcm_enable_flag = self.pop_read_data(1)
-            self.amvr_enable_flag = self.pop_read_data(1)
-            self.num_of_hmvp_cand = self.pop_read_data(4)
-            self.umve_enable_flag = self.pop_read_data(1)
+            self.secondary_transform_enable_flag = self.assign_data('secondary_transform_enable_flag',1)
+            self.sample_adaptive_offset_enable_flag = self.assign_data('sample_adaptive_offset_enable_flag',1)
+            self.adaptive_leveling_filter_enable_flag = self.assign_data('adaptive_leveling_filter_enable_flag',1)
+            self.affine_enable_flag = self.assign_data('affine_enable_flag',1)
+            self.smvd_enable_flag = self.assign_data('smvd_enable_flag',1)
+            self.ipcm_enable_flag = self.assign_data('ipcm_enable_flag',1)
+            self.amvr_enable_flag = self.assign_data('amvr_enable_flag',1)
+            self.num_of_hmvp_cand = self.assign_data('num_of_hmvp_cand',4)
+            self.umve_enable_flag = self.assign_data('umve_enable_flag',1)
             if((self.num_of_hmvp_cand=='1') & (self.amvr_enable_flag=='1')):
-                self.emvr_enable_flag = self.pop_read_data(1)
-            self.ipf_enable_flag = self.pop_read_data(1)
-            self.tscpm_enable_flag = self.pop_read_data(1)
-            self.marker_bit = self.pop_read_data(1)
-            self.dt_enable_flag = self.pop_read_data(1)
-            if(self.dt_enable_flag):
-                self.log2_max_dt_size_minus4 = self.pop_read_data(2)
-            self.pbt_enable_flag = self.pop_read_data(1)
-            if(self.low_delay==0):
-                self.output_reorder_delay=self.pop_read_data(5)
-            self.cross_patch_loopfilter_enable_flag = self.pop_read_data(1)
-            self.ref_colocated_patch_flag = self.pop_read_data(1)
-            self.stable_patch_flag = self.pop_read_data(1)
-            if(self.stable_patch_flag):
-                self.uniform_patch_flag = self.pop_read_data(1)
-                if(self.uniform_patch_flag):
-                    self.marker_bit = self.pop_read_data(1)
+                self.emvr_enable_flag = self.assign_data('emvr_enable_flag',1)
+            self.ipf_enable_flag = self.assign_data('ipf_enable_flag',1)
+            self.tscpm_enable_flag = self.assign_data('tscpm_enable_flag',1)
+            self.marker_bit = self.assign_data('marker_bit',1)
+            self.dt_enable_flag = self.assign_data('dt_enable_flag',1)
+            if(self.dt_enable_flag=='1'):
+                self.log2_max_dt_size_minus4 = self.assign_data('log2_max_dt_size_minus4',2)
+            self.pbt_enable_flag = self.assign_data('pbt_enable_flag',1)
+            if(self.low_delay=='0'):
+                self.output_reorder_delay = self.assign_data('output_reorder_delay',5)
+            self.cross_patch_loopfilter_enable_flag = self.assign_data('cross_patch_loopfilter_enable_flag',1)
+            self.ref_colocated_patch_flag = self.assign_data('ref_colocated_patch_flag',1)
+            self.stable_patch_flag = self.assign_data('stable_patch_flag',1)
+            if(self.stable_patch_flag=='1'):
+                self.uniform_patch_flag = self.assign_data('uniform_patch_flag',1)
+                if(self.uniform_patch_flag=='1'):
+                    self.marker_bit = self.assign_data('marker_bit',1)
                     self.patch_width_minus1 = self.read_ue()
+                    print('patch_width_minus1  ',((self.patch_width_minus1)))
                     self.patch_height_minus1 = self.read_ue()
-            self.reserved_bits = self.pop_read_data(2)
+                    print('patch_height_minus1  ',((self.patch_height_minus1)))
+            self.reserved_bits = self.assign_data('reserved_bits',2)
+            
+            
             
     # 参考图像队列配置集定义
     def reference_picture_list_set(self,mlist,rpls):
-        if(self.library_picture_enable_flag):
-            self.reference_to_library_enable_flag = self.pop_read_data(1)
+        print('in func reference_picture_list_set')
+        if(self.library_picture_enable_flag=='1'):
+            self.reference_to_library_enable_flag = self.assign_data('reference_to_library_enable_flag',1)
         self.NumOfRefPic[mlist][rpls] = self.read_ue()
-        self.library_index_flag = [[[0 for k in range(0,self.num_ref_pic_list_set[0])] for j in range(0,self.num_ref_pic_list_set[0])] for i in range(0,self.NumOfRefPic[mlist][rpls])]
+        print('NumOfRefPic[mlist][rpls]  ',(self.NumOfRefPic[mlist][rpls]))
+        #==================malloc array
+        self.library_index_flag[mlist] = [[0 for k in range(self.NumOfRefPic[mlist][rpls])] for j in range(self.num_ref_pic_list_set[mlist])]
+        self.referenced_library_picture_index[mlist] = [[0 for k in range(self.NumOfRefPic[mlist][rpls])] for j in range(self.num_ref_pic_list_set[mlist])]
+        self.abs_delta_doi[mlist] = [[0 for k in range(self.NumOfRefPic[mlist][rpls])] for j in range(self.num_ref_pic_list_set[mlist])]
+        self.sign_delta_doi[mlist] = [[0 for k in range(self.NumOfRefPic[mlist][rpls])] for j in range(self.num_ref_pic_list_set[mlist])]
+        
         for i in range((self.NumOfRefPic[mlist][rpls])):
-            if (self.reference_to_library_enable_flag):
-                self.library_index_flag[mlist][rpls][i] = self.pop_read_data(1)
-            if(self.library_index_flag[mlist][rpls][i]):
+            if (self.reference_to_library_enable_flag=='1'):
+                self.library_index_flag[mlist][rpls][i] = self.assign_data('library_index_flag[mlist][rpls][i]',1)
+            if(self.library_index_flag[mlist][rpls][i]=='1'):
                 self.referenced_library_picture_index[mlist][rpls][i] = self.read_ue()
+                print('referenced_library_picture_index[mlist][rpls][i]   ',self.referenced_library_picture_index[mlist][rpls][i])
             else:
                 self.abs_delta_doi[mlist][rpls][i] = self.read_ue()
-                if(abs_delta_doi[mlist][rpls][i] > 0):
-                    self.sign_delta_doi[mlist][rpls][i] = self.pop_read_data(1)
+                print('abs_delta_doi[mlist][rpls][i]   ',self.abs_delta_doi[mlist][rpls][i])
+                if(int(abs_delta_doi[mlist][rpls][i]) > 0):
+                    self.sign_delta_doi[mlist][rpls][i] = self.assign_data('sign_delta_doi[mlist][rpls][i]',1)
+        print('out func reference_picture_list_set')            
 
    # 自定义加权量化矩阵定义
     def weight_quant_matrix(self):
+        print('in func weight_quant_matrix')
         for sizeId in range(2):
             WQMSize = 1 << (sizeId+2)
             self.WeightQuantMatrix4x4= [[0 for j in range(0,WQMSize)] for i in range(0,WQMSize)]
@@ -266,6 +283,8 @@ class sequence_header:
                         self.WeightQuantMatrix4x4[i][j] = weight_quant_coeff
                     else:
                         self.WeightQuantMatrix8x8[i][j] = weight_quant_coeff
+        print('out func weight_quant_matrix')
+
     def pop_read_data(self,read_length):
         string = self.data_file[self.pointer_position:self.pointer_position+read_length]
         self.pointer_position = self.pointer_position + read_length
@@ -275,20 +294,31 @@ class sequence_header:
         string = self.data_file[self.pointer_position:self.pointer_position+read_length]
         return string
     def read_ue(self):
-        string_size=0
-        while(self.pop_read_data(1)=='0'):
+        string_size=1
+        while(self.get_read_data(1)=='0'):
             string_size = string_size+1
-        self.pop_read_data(1)
-        if(string_size==0):
-            return 0
-        else:
-            return (self.str_to_int(self.pop_read_data(string_size)))
+            self.pop_read_data(1)
+        return (self.str_to_int(self.pop_read_data(string_size)))
         
     def str_to_int(self,str):
         data = 0
         for i in range(len(str)):
             data = data*2 + int(str[i])
         return data
+
+    def str_to_hex(self,str_input):
+        data_string=''
+        if(((len(str_input)%4)==0)&(len(str_input)>0)):
+            for i in range(int(len(str_input)/4)):
+                data = hex(int(str_input[i*4:i*4+4],2))
+                data_string = data_string + data[-1]
+        else:
+            data_string = str_input
+        return data_string
+    def assign_data(self,str_value,len_data):
+        data_value = self.str_to_hex(self.pop_read_data(len_data))
+        print(str_value,'  ',data_value)
+        return data_value
 
 # 扩展和用户数据定义
     
@@ -359,15 +389,12 @@ class extension_and_user_data:
         string = self.data_file[self.pointer_position:self.pointer_position+read_length]
         return string
     def read_ue(self):
-        string_size=0
-        while(self.pop_read_data(1)=='0'):
+        string_size=1
+        while(self.get_read_data(1)=='0'):
             string_size = string_size+1
-        self.pop_read_data(1)
-        if(string_size==0):
-            return 0
-        else:
-            return (self.str_to_int(self.pop_read_data(string_size)))
-        
+            self.pop_read_data(1)
+        return (self.str_to_int(self.pop_read_data(string_size)))
+       
     def str_to_int(self,str):
         data = 0
         for i in range(len(str)):
