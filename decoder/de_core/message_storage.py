@@ -13,7 +13,8 @@ dict =  {
     'inter_picture_start_code':'00000000000000000000000110110110',#0x000001B6,
     'video_edit_code':'00000000000000000000000110110111',#0x000001B7,
     'bbv_delay':'11111111111111111111111111111111',#0xFFFFFFFF,
-    '00': 'patch_start_code',#00-7F is patch_start_code
+    'patch_start_code1':'00000000000000000000000000000000'#00-7F is patch_start_code
+    'patch_start_code2':'0000000000000000000000000000007F'#00-7F is patch_start_code
     '8F': 'patch_end_code'
     }
 class video_sequence:
@@ -174,78 +175,215 @@ class sequence_header:
         self.weight_quant_param_delta1=[0 for i in range(6)]
         self.weight_quant_param_delta2=[0 for i in range(6)]
         self.picture_alf_enable_flag=[0 for i in range(3)]
+        #图像数据定义
+        self.patch_start_code=0
+        self.patch_sao_enable_flag = [0 for i in range(3)]
 
+
+
+    def picture_data(self):
+        while((self.get_read_data(32) >= dict['patch_start_code1'])&(self.get_read_data(32) <= dict['patch_start_code2'])):#000001+0x00～0x7F(patch_index)
+            self.patch()
+    
+    #片定义
+    def patch(self):
+        self.patch_start_code=self.assign_data('patch_start_code',32)#000001+0x00～0x7F(patch_index)
+        if (self.fixed_picture_qp_flag == '0'):
+            self.fixed_patch_qp_flag=self.assign_data('fixed_patch_qp_flag',1)
+            self.patch_qp=self.assign_data('patch_qp',7)
+        if (self.sample_adaptive_offset_enable_flag=='1'):#SaoEnableFlag
+            for compIdx in range(3):
+                self.patch_sao_enable_flag[compIdx] = self.assign_data('patch_sao_enable_flag[compIdx]',1)
+        while (self.byte_aligned()==0):#字节对齐
+            self.aec_byte_alignment_bit = self.assign_data('aec_byte_alignment_bit',1)
+        while (is_end_of_patch()==0):
+            if (FixedQP==0):
+                lcu_qp_delta
+                PreviousDeltaQP = lcu_qp_delta
+            if (SaoEnableFlag):
+                if (PatchSaoEnableFlag[0] | PatchSaoEnableFlag[1] | PatchSaoEnableFlag[2]):
+                    if (MergeFlagExist):
+                        sao_merge_type_index
+                    if (SaoMergeMode == 'SAO_NON_MERGE') :
+                        for compIdx in range(3):
+                            if (PatchSaoEnableFlag[compIdx]) :
+                                sao_mode[compIdx]
+                                if (SaoMode[compIdx] == 'SAO_Interval'):
+                                    for j in range(MaxOffsetNumber):
+                                        sao_interval_offset_abs[compIdx][j]
+                                        if (SaoIntervalOffsetAbs[compIdx][j]):
+                                            sao_interval_offset_sign[compIdx][j]
+                                    sao_interval_start_pos[compIdx]
+                                    sao_interval_delta_pos_minus2[compIdx]
+                                if (SaoMode[compIdx] == 'SAO_Edge'):
+                                    for j in range(MaxOffsetNumber):
+                                        sao_edge_offset[compIdx][j]
+                                    sao_edge_type[compIdx]
+            for compIdx in range(3):
+                if (PictureAlfEnableFlag[compIdx] == 1):
+                    alf_lcu_enable_flag[compIdx][LcuIndex]
+            x0 = (LcuIndex % pictureWidthInLcu) * LcuSize
+            y0 = (LcuIndex / pictureWidthInLcu) * LcuSize
+            coding_unit_tree(x0, y0, 0, 1<<LcuSizeInBit, 1<<LcuSizeInBit, 1, 'PRED_No_Constraint')
+            aec_lcu_stuffing_bit
+        next_start_code( )
+        patch_end_code
+
+
+    #在位流中检测是否已达到片的结尾，如果已到达片的结尾，返回TRUE，否则返回FALSE
+    def is_end_of_patch(self):
+        if(self.byte_aligned()):
+            if (self.get_read_data(32) == 0x80000001):
+                return True#片结束
+        else:
+            if ((byte_aligned_next_bits(24) == 0x000001) & is_stuffing_pattern( )):
+                return True #片结束
+        return False
+
+
+    # 字节是否
+    def byte_aligned(self):
+        if((self.pointer_position%8)==0):
+            return 1
+        else:
+            return 0
+    
+    # 扩展和用户数据定义
+    def extension_and_user_data(self,i):
+        while ((self.get_read_data(32) == dict['extension_start_code']) | (self.get_read_data(32) == dict['user_data_start_code'])):
+            if (self.get_read_data(32) == dict['extension_start_code']):#0x000001B5
+                self.extension_data(i)
+            if (self.get_read_data(32) == dict['user_data_start_code']):#0x000001B2
+                self.user_data()
+    
+    #扩展数据定义
+    def extension_data(self,i):
+        print('extension_data begin')
+        '''
+        while ((self.get_read_data(32) == "extension_start_code")):#0x000001B5
+            self.extension_start_code = self.assign_data('intra_picture_start_code',32)
+            if(i==0):
+                if(self.get_read_data(4)== '0010'):#序列显示扩展 
+                    self.sequence_display_extension()
+                elif (self.get_read_data(4) == '0011'): # 时域可伸缩扩展 
+                    self.temporal_scalability_extension()
+                elif (self.get_read_data(4) == '0100'): # 版权扩展 
+                    self.copyright_extension()
+                elif (self.get_read_data(4) == '0110'): # 内容加密扩展
+                    self.cei_extension()
+                elif (self.get_read_data(4) == '1010'): # 目标设备显示和内容元数据扩展 
+                    self.mastering_display_and_content_metadata_extension()
+                elif (self.get_read_data(4) == '1011'): # 摄像机参数扩展 
+                    self.camera_parameters_extension()
+                elif (self.get_read_data(4) == '1101'): # 参考知识图像扩展
+                    self.cross_random_access_point_reference_extension()
+                else:
+                    while (self.get_read_data(24) != '000000000000000000000001'):
+                        self.reserved_extension_data_byte
+            else:#图像头之后
+                if (self.get_read_data(4) == '0100'): # 版权扩展 
+                    self.copyright_extension()
+                elif ( self.get_read_data(4) == '0101' ): # 高动态范围图像元数据扩展
+                    self.hdr_dynamic_metadata_extension()
+                elif (self.get_read_data(4) == '0111'): # 图像显示扩展
+                    self.picture_display_extension()
+                elif (self.get_read_data(4) == '1011'): # 摄像机参数扩展
+                    self.camera_parameters_extension()
+                elif (self.get_read_data(4) == '1100'): #感兴趣区域参数扩展
+                    self.roi_parameters_extension()
+                else:
+                    while (self.get_read_data(24) != '0000 0000 0000 0000 0000 0001'):
+                        self.reserved_extension_data_byte
+        '''
+    #用户数据定义
+    def user_data(self):
+        print('user_data begin')
+        self.user_data_start_code=self.assign_data('user_data_start_code',32)
+        while (self.get_read_data(24) != '000000000000000000000001'):
+            self.user_data=self.assign_data('user_data',8)
+
+
+    
 
     #帧内预测图像头定义
     def intra_picture_header(self):
+        print('intra_picture_header begin begin begin begin begin begin begin begin begin begin begin begin begin')
         self.intra_picture_start_code = self.assign_data('intra_picture_start_code',32)
-        bbv_delay
-        time_code_flag
-        if (time_code_flag == '1'):
-            time_code
-        decode_order_index
-        if (LibraryStreamFlag):
-            library_picture_index
-        if (temporal_id_enable_flag == '1'):
-            temporal_id
-        if (low_delay == '0'):
-            picture_output_delay
-        if (low_delay == '1'):
-            bbv_check_times
-            progressive_frame
-        if (progressive_frame == '0'):
-            picture_structure
-            top_field_first
-            repeat_first_field
-        if (field_coded_sequence == '1'):
-            top_field_picture_flag
-            reserved_bits
-        ref_pic_list_set_flag[0]
-        if (RefPicListSetFlag[0]):
-            if (NumRefPicListSet[0] > 1):
-                ref_pic_list_set_idx[0]
+        self.bbv_delay = self.assign_data('bbv_delay',32)
+        self.time_code_flag = self.assign_data('time_code_flag',1)
+        if (self.time_code_flag == '1'):
+            self.time_code = self.assign_data('time_code',24)
+        self.decode_order_index = self.assign_data('decode_order_index',8)
+        
+        if (self.library_stream_flag=='1'):
+            self.library_picture_index = self.read_ue()
+        if (self.temporal_id_enable_flag == '1'):
+            self.temporal_id = self.assign_data('temporal_id',3)
+            
+        if (self.low_delay == '0'):
+            self.picture_output_delay=self.read_ue()
+        if (self.low_delay == '1'):
+            self.bbv_check_times=self.read_ue()
+            
+        self.progressive_frame = self.assign_data('progressive_frame',1)
+        if (self.progressive_frame == '0'):
+            self.picture_structure= self.assign_data('picture_structure',1)
+        self.top_field_first= self.assign_data('top_field_first',1)
+        self.repeat_first_field= self.assign_data('repeat_first_field',1)
+        if (self.field_coded_sequence == '1'):
+            self.top_field_picture_flag= self.assign_data('top_field_picture_flag',1)
+            self.reserved_bits= self.assign_data('reserved_bits',1)
+            
+        self.ref_pic_list_set_flag[0]= self.assign_data('ref_pic_list_set_flag[0]',1)
+        if ( self.ref_pic_list_set_flag[0]=='1'):
+            if (int(self.num_ref_pic_list_set[0]) > 1):
+                self.ref_pic_list_set_idx[0]=self.read_ue()
         else:
-            reference_picture_list_set(0, NumRefPicListSet[0])
-        if (Rpl1IdxExistFlag):
-            ref_pic_list_set_flag[1]
-        if (RefPicListSetFlag[1]):
-            if (Rpl1IdxExistFlag & NumRefPicListSet[1] > 1):
-                ref_pic_list_set_idx[1]
+            self.reference_picture_list_set(0, self.num_ref_pic_list_set[0])
+        if (self.rpl1_idx_exist_flag=='1'):
+            self.ref_pic_list_set_flag[1]= self.assign_data('ref_pic_list_set_flag[1]',1)
+        if (self.ref_pic_list_set_flag[1]=='1'):
+            if ((self.rpl1_idx_exist_flag=='1') & (int(self.num_ref_pic_list_set[1]) > 1)):
+                self.ref_pic_list_set_idx[1]=self.read_ue()
         else:
-            reference_picture_list_set(1, NumRefPicListSet[1])
-        fixed_picture_qp_flag
-        picture_qp
-        loop_filter_disable_flag
-        if (loop_filter_disable_flag == '0'):
-            loop_filter_parameter_flag
-        if (loop_filter_parameter_flag):
-            alpha_c_offset
-            beta_offset
-        chroma_quant_param_disable_flag
-        if (chroma_quant_param_disable_flag == '0'):
-            chroma_quant_param_delta_cb 
-            chroma_quant_param_delta_cr 
-        if (WeightQuantEnableFlag):
-            pic_weight_quant_enable_flag
-            if (PicWeightQuantEnableFlag):
-                pic_weight_quant_data_index
-                if (pic_weight_quant_data_index == '01'):
-                    reserved_bits
-                    weight_quant_param_index
-                    weight_quant_model
-                    if (weight_quant_param_index == '01'):
+            self.reference_picture_list_set(1, self.num_ref_pic_list_set[1])
+        self.fixed_picture_qp_flag= self.assign_data('fixed_picture_qp_flag',1)
+        self.picture_qp= self.assign_data('picture_qp',7)
+        self.loop_filter_disable_flag= self.assign_data('loop_filter_disable_flag',1)
+        if (self.loop_filter_disable_flag == '0'):
+            self.loop_filter_parameter_flag= self.assign_data('loop_filter_parameter_flag',1)
+            if (self.loop_filter_parameter_flag=='1'):
+                self.alpha_c_offset=self.read_se()
+                self.beta_offset=self.read_se()
+        self.chroma_quant_param_disable_flag= self.assign_data('chroma_quant_param_disable_flag',1)
+        
+        if (self.chroma_quant_param_disable_flag == '0'):
+            self.chroma_quant_param_delta_cb=self.read_se()
+            self.chroma_quant_param_delta_cr=self.read_se()
+             
+        if (self.weight_quant_enable_flag=='1'):
+            self.pic_weight_quant_enable_flag= self.assign_data('pic_weight_quant_enable_flag',1)
+            if (self.pic_weight_quant_enable_flag=='1'):
+                self.pic_weight_quant_data_index= self.assign_data('pic_weight_quant_data_index',2)
+                if (self.pic_weight_quant_data_index == '01'):
+                    self.reserved_bits= self.assign_data('reserved_bits',1)
+                    self.weight_quant_param_index = self.assign_data('weight_quant_param_index',2)
+                    self.weight_quant_model = self.assign_data('weight_quant_model',2)
+                    if (self.weight_quant_param_index == '01'):
                         for i in range(6):
-                            weight_quant_param_delta1[i]
-                    if (weight_quant_param_index == '10'):
+                            self.weight_quant_param_delta1[i] = self.read_se()
+                    if (self.weight_quant_param_index == '10'):
                          for i in range(6):
-                            weight_quant_param_delta2[i]
-                elif(pic_weight_quant_data_index == '10'):
-                    weight_quant_matrix()
-        if (AlfEnableFlag):
+                            weight_quant_param_delta2[i] = self.read_se()
+                elif(self.pic_weight_quant_data_index == '10'):
+                    self.weight_quant_matrix()
+        if (self.adaptive_leveling_filter_enable_flag=='1'):#AlfEnableFlag
             for compIdx in range(3):
-                picture_alf_enable_flag[compIdx]
-            if (PictureAlfEnableFlag[0] == 1 | PictureAlfEnableFlag[1] == 1 | PictureAlfEnableFlag[2] == 1):
-                alf_parameter_set()
+                self.picture_alf_enable_flag[compIdx] = self.assign_data('self.picture_alf_enable_flag[compIdx]',1)
+            if (self.picture_alf_enable_flag[0] == '1' | self.picture_alf_enable_flag[1] == '1' | self.picture_alf_enable_flag[2] == '1'):#picture_alf_enable_flag
+                self.alf_parameter_set()
+        #self.next_start_code()
+        print('position....................',self.pointer_position)
 
     def run(self):
         if(self.get_read_data(32)==dict['video_sequence_start_code']):
@@ -350,6 +488,12 @@ class sequence_header:
                     print('patch_height_minus1  ',((self.patch_height_minus1)))
             self.reserved_bits = self.assign_data('reserved_bits',2)
             print('position....................',self.pointer_position)
+            self.pop_read_data(12)
+            self.intra_picture_header()
+            print('position....................',self.pointer_position)
+            self.pop_read_data(32)
+            self.extension_and_user_data(1)
+
     # 参考图像队列配置集定义
     def reference_picture_list_set(self,mlist,rpls):
         print('in func reference_picture_list_set')
@@ -408,7 +552,17 @@ class sequence_header:
             string_size = string_size+1
             self.pop_read_data(1)
         return (self.str_to_int(self.pop_read_data(string_size))-1)
-        
+    def read_se(self):
+        string_size=1
+        while(self.get_read_data(1)=='0'):
+            string_size = string_size+1
+            self.pop_read_data(1)
+        code_num = self.str_to_int(self.pop_read_data(string_size))-1
+        if(code_num%2==0):
+            return 0-code_num/2
+        else:
+            return code_num/2+1
+
     def str_to_int(self,str):
         data = 0
         for i in range(len(str)):
@@ -430,88 +584,7 @@ class sequence_header:
         
         return data_value
 
-# 扩展和用户数据定义
-    
-class extension_and_user_data:
-    def __init__(self,i,data_file,pointer_position):
-        self.data_file=data_file
-        self.pointer_position=pointer_position
-        self.List_UserData = []
-        self.extension_data(0)
-        
-        while ((self.get_read_data(32) == dict['extension_start_code']) | (self.get_read_data(32) == dict['user_data_start_code'])):
-            if (pop_read_data(32) == dict['extension_start_code']):#0x000001B5
-                extension_data(i)
-                print('extension_data')
-            if (pop_read_data(32) == dict['user_data_start_code']):#0x000001B2
-                user_data()
-                print('user_data')
-    
-    #扩展数据定义
-    
-    def extension_data(self,i):
-        while ((self.get_read_data(32) == "extension_start_code")):#0x000001B5
-            if(i==0):
-                if(pop_read_data(4)== '0010'):#序列显示扩展 
-                    sequence_display_extension()
-                elif (pop_read_data(4) == '0011'): # 时域可伸缩扩展 
-                    temporal_scalability_extension()
-                elif (pop_read_data(4) == '0100'): # 版权扩展 
-                    copyright_extension()
-                elif (pop_read_data(4) == '0110'): 
-                    cei_extension()
-                elif (pop_read_data(4) == '1010'): # 目标设备显示和内容元数据扩展 
-                    mastering_display_and_content_metadata_extension()
-                elif (pop_read_data(4) == '1011'): # 摄像机参数扩展 
-                    camera_parameters_extension()
-                elif (pop_read_data(4) == '1101'): # 参考知识图像扩展
-                    cross_random_access_point_reference_extension()
-                else:
-                    while (pop_read_data(24) != '0000 0000 0000 0000 0000 0001'):
-                        reserved_extension_data_byte
-            else:#图像头之后
-                if (pop_read_data(4) == '0100'): # 版权扩展 
-                    copyright_extension()
-                elif ( pop_read_data(4) == '0101' ): # 高动态范围图像元数据扩展
-                    hdr_dynamic_metadata_extension()
-                elif (pop_read_data(4) == '0111'): # 图像显示扩展
-                    picture_display_extension()
-                elif (pop_read_data(4) == '1011'): # 摄像机参数扩展
-                    camera_parameters_extension()
-                elif (pop_read_data(4) == '1100'): #感兴趣区域参数扩展
-                    roi_parameters_extension()
-                else:
-                    while (pop_read_data(24) != '0000 0000 0000 0000 0000 0001'):
-                        reserved_extension_data_byte
-    
-    #用户数据定义
-    def user_data(self):
-        while (self.pop_read_data(24) != '0000 0000 0000 0000 0000 0001'):
-            user_data=self.pop_read_data(8)
-            self.List_UserData.append(user_data)
 
-    def pop_read_data(self,read_length):
-        string = self.data_file[self.pointer_position:self.pointer_position+read_length]
-        self.pointer_position = self.pointer_position + read_length
-        return string
-
-    def get_read_data(self,read_length):
-        string = self.data_file[self.pointer_position:self.pointer_position+read_length]
-        return string
-    def read_ue(self):
-        string_size=1
-        while(self.get_read_data(1)=='0'):
-            string_size = string_size+1
-            self.pop_read_data(1)
-        return (self.str_to_int(self.pop_read_data(string_size))-1)
-       
-    def str_to_int(self,str):
-        data = 0
-        for i in range(len(str)):
-            data = data*2 + int(str[i])
-        return data
-    def return_position(self):
-        return self.pointer_position
     
 
 '''
@@ -844,59 +917,6 @@ class picture_display_extension:
             marker_bit
             picture_centre_vertical_offset
             marker_bit
-
-#图像数据定义
-
-class picture_data:
-    def __init__(seq_data):
-        patch()
-        while(next_bits(32) == patch_start_code):#000001+0x00～0x7F(patch_index)
-            patch()
-    
-    #片定义
-    
-    def patch():
-        patch_start_code#000001+0x00～0x7F(patch_index)
-        if (fixed_picture_qp_flag == '0') :
-            fixed_patch_qp_flag
-            patch_qp
-        if (SaoEnableFlag):
-            for compIdx in range(3):
-                patch_sao_enable_flag[compIdx]
-        while (byte_aligned()==0):
-            aec_byte_alignment_bit
-        while (is_end_of_patch()==0):
-            if (FixedQP==0):
-                lcu_qp_delta
-                PreviousDeltaQP = lcu_qp_delta
-            if (SaoEnableFlag):
-                if (PatchSaoEnableFlag[0] | PatchSaoEnableFlag[1] | PatchSaoEnableFlag[2]):
-                    if (MergeFlagExist):
-                        sao_merge_type_index
-                    if (SaoMergeMode == 'SAO_NON_MERGE') :
-                        for compIdx in range(3):
-                            if (PatchSaoEnableFlag[compIdx]) :
-                                sao_mode[compIdx]
-                                if (SaoMode[compIdx] == 'SAO_Interval'):
-                                    for j in range(MaxOffsetNumber):
-                                        sao_interval_offset_abs[compIdx][j]
-                                        if (SaoIntervalOffsetAbs[compIdx][j]):
-                                            sao_interval_offset_sign[compIdx][j]
-                                    sao_interval_start_pos[compIdx]
-                                    sao_interval_delta_pos_minus2[compIdx]
-                                if (SaoMode[compIdx] == 'SAO_Edge'):
-                                    for j in range(MaxOffsetNumber):
-                                        sao_edge_offset[compIdx][j]
-                                    sao_edge_type[compIdx]
-            for compIdx in range(3):
-                if (PictureAlfEnableFlag[compIdx] == 1):
-                    alf_lcu_enable_flag[compIdx][LcuIndex]
-            x0 = (LcuIndex % pictureWidthInLcu) * LcuSize
-            y0 = (LcuIndex / pictureWidthInLcu) * LcuSize
-            coding_unit_tree(x0, y0, 0, 1<<LcuSizeInBit, 1<<LcuSizeInBit, 1, 'PRED_No_Constraint')
-            aec_lcu_stuffing_bit
-        next_start_code( )
-        patch_end_code
 
 
 #编码树定义
@@ -1320,18 +1340,7 @@ class alf_parameter_set:
                 
 
 
-#is_end_of_patch
-#在位流中检测是否已达到片的结尾，如果已到达片的结尾，返回TRUE，否则返回FALSE
 
-class is_end_of_patch:
-    def __init__():
-        if(byte_aligned()):
-            if (next_bits(32) == 0x80000001):
-                return True#片结束
-        else:
-            if ((byte_aligned_next_bits(24) == 0x000001) & is_stuffing_pattern( )):
-                return True #片结束
-        return False
 
 
 #在位流中检测当前字节中剩下的位或在字节对齐时下一个字节是否是片结尾填充的二进制位，如
