@@ -13,8 +13,8 @@ dict =  {
     'inter_picture_start_code':'00000000000000000000000110110110',#0x000001B6,
     'video_edit_code':'00000000000000000000000110110111',#0x000001B7,
     'bbv_delay':'11111111111111111111111111111111',#0xFFFFFFFF,
-    'patch_start_code1':'00000000000000000000000000000000'#00-7F is patch_start_code
-    'patch_start_code2':'0000000000000000000000000000007F'#00-7F is patch_start_code
+    'patch_start_code1':'00000000000000000000000000000000',#00-7F is patch_start_code
+    'patch_start_code2':'0000000000000000000000000000007F',#00-7F is patch_start_code
     '8F': 'patch_end_code'
     }
 class video_sequence:
@@ -581,7 +581,6 @@ class sequence_header:
     def assign_data(self,str_value,len_data):
         data_value = self.str_to_hex(self.pop_read_data(len_data))
         print(str_value,'  ',data_value)
-        
         return data_value
 
 
