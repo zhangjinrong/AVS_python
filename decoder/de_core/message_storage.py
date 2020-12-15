@@ -13,8 +13,8 @@ dict =  {
     'inter_picture_start_code':'00000000000000000000000110110110',#0x000001B6,
     'video_edit_code':'00000000000000000000000110110111',#0x000001B7,
     'bbv_delay':'11111111111111111111111111111111',#0xFFFFFFFF,
-    'patch_start_code1':'00000000000000000000000000000000',#00-7F is patch_start_code
-    'patch_start_code2':'0000000000000000000000000000007F',#00-7F is patch_start_code
+    'patch_start_code1':'00000000000000000000000100000000',#00-7F is patch_start_code
+    'patch_start_code2':'0000000000000000000000010000007F',#00-7F is patch_start_code
     '8F': 'patch_end_code'
     }
 class video_sequence:
@@ -178,12 +178,16 @@ class sequence_header:
         #图像数据定义
         self.patch_start_code=0
         self.patch_sao_enable_flag = [0 for i in range(3)]
-
-
+        #片定义
+        self.PreviousDeltaQP=0
+        self.lcu_qp_delta=0
+        self.sao_merge_type_index=0
+        self.MergeFlagExist=0
 
     def picture_data(self):
         while((self.get_read_data(32) >= dict['patch_start_code1'])&(self.get_read_data(32) <= dict['patch_start_code2'])):#000001+0x00～0x7F(patch_index)
             self.patch()
+            print('asdf')
     
     #片定义
     def patch(self):
@@ -196,52 +200,92 @@ class sequence_header:
                 self.patch_sao_enable_flag[compIdx] = self.assign_data('patch_sao_enable_flag[compIdx]',1)
         while (self.byte_aligned()==0):#字节对齐
             self.aec_byte_alignment_bit = self.assign_data('aec_byte_alignment_bit',1)
-        while (is_end_of_patch()==0):
-            if (FixedQP==0):
-                lcu_qp_delta
-                PreviousDeltaQP = lcu_qp_delta
-            if (SaoEnableFlag):
-                if (PatchSaoEnableFlag[0] | PatchSaoEnableFlag[1] | PatchSaoEnableFlag[2]):
+        print(self.fixed_picture_qp_flag)
+        
+        while (~self.is_end_of_patch()):
+            if (self.fixed_picture_qp_flag=='0'):
+                self.lcu_qp_delta = self.read_ae('lcu_qp_delta')
+                self.PreviousDeltaQP = lcu_qp_delta
+            if (self.sample_adaptive_offset_enable_flag=='1'):
+                if ((self.patch_sao_enable_flag[0]=='1') | (self.patch_sao_enable_flag[1]=='1') | (self.patch_sao_enable_flag[2]=='1')):
+                    if('如果当前样本的样值偏移补偿单元E的上边样值偏移补偿单元U存在， 且与E对应的最大编码单元和U对应的最大编码单元处于同一片'):
+                        SaoMergeUpAvai=1
+                    else:
+                        SaoMergeUpAvai=0
+                    if('如果当前样本的样值偏移补偿单元E的左边样值偏移补偿单元L存在， 且与E对应的最大编码单元和L对应的最大编码单元处于同一片'):
+                        SaoMergeLeftAvai=1
+                    else:
+                        SaoMergeLeftAvai=0
+                    if(SaoMergeUpAvai|SaoMergeLeftAvai):
+                        MergeFlagExist = 1
+                    else:
+                        MergeFlagExist = 0
                     if (MergeFlagExist):
-                        sao_merge_type_index
-                    if (SaoMergeMode == 'SAO_NON_MERGE') :
+                        self.sao_merge_type_index = self.read_ae('sao_merge_type_index')
+                    if (self.get_SaoMergeMode() == 'SAO_NON_MERGE'):
                         for compIdx in range(3):
-                            if (PatchSaoEnableFlag[compIdx]) :
-                                sao_mode[compIdx]
-                                if (SaoMode[compIdx] == 'SAO_Interval'):
+                            if (self.patch_sao_enable_flag[compIdx]):
+                                self.sao_mode[compIdx] = self.read_ae('sao_mode')
+                                self.SaoMode[compIdx] = self.get_SaoMode(self.sao_mode[compIdx])
+                                if (self.SaoMode[compIdx] == 'SAO_Interval'):
                                     for j in range(MaxOffsetNumber):
-                                        sao_interval_offset_abs[compIdx][j]
-                                        if (SaoIntervalOffsetAbs[compIdx][j]):
-                                            sao_interval_offset_sign[compIdx][j]
-                                    sao_interval_start_pos[compIdx]
-                                    sao_interval_delta_pos_minus2[compIdx]
-                                if (SaoMode[compIdx] == 'SAO_Edge'):
+                                        self.sao_interval_offset_abs[compIdx][j] = self.read_ae()
+                                        if (self.sao_interval_offset_abs[compIdx][j]):
+                                            self.sao_interval_offset_sign[compIdx][j] = self.read_ae()
+                                    self.sao_interval_start_pos[compIdx] = self.read_ae()
+                                    self.sao_interval_delta_pos_minus2[compIdx] = self.read_ae()
+                                if (self.SaoMode[compIdx] == 'SAO_Edge'):
                                     for j in range(MaxOffsetNumber):
-                                        sao_edge_offset[compIdx][j]
-                                    sao_edge_type[compIdx]
+                                        self.sao_edge_offset[compIdx][j] = self.read_ae()
+                                    self.sao_edge_type[compIdx] = self.read_ae()
             for compIdx in range(3):
-                if (PictureAlfEnableFlag[compIdx] == 1):
-                    alf_lcu_enable_flag[compIdx][LcuIndex]
+                if (self.picture_alf_enable_flag[compIdx] == '1'):
+                    self.alf_lcu_enable_flag[compIdx][LcuIndex] = self.read_ae()
             x0 = (LcuIndex % pictureWidthInLcu) * LcuSize
             y0 = (LcuIndex / pictureWidthInLcu) * LcuSize
-            coding_unit_tree(x0, y0, 0, 1<<LcuSizeInBit, 1<<LcuSizeInBit, 1, 'PRED_No_Constraint')
-            aec_lcu_stuffing_bit
-        next_start_code( )
+            self.coding_unit_tree(x0, y0, 0, 1<<LcuSizeInBit, 1<<LcuSizeInBit, 1, 'PRED_No_Constraint')
+            self.aec_lcu_stuffing_bit = self.read_ae()
+        next_start_code()
         patch_end_code
+    
+    def get_SaoMode(self,n):
+        if(n==0):
+            return 'SAO_Off'
+        if(n==1):
+            return 'SAO_Interval'
+        if(n==2):
+            return 'SAO_Edge'
+
+    def get_SaoMergeMode(self):
+        if((SaoMergeTypeIndex==1)&(SaoMergeLeftAvai==1)&(SaoMergeUpAvai==0)):
+            SaoMergeMode = 'SAO_MERGE_LEFT'
+        elif((SaoMergeTypeIndex==1)&(SaoMergeLeftAvai==0)&(SaoMergeUpAvai==1)):
+            SaoMergeMode = 'SAO_MERGE_UP'
+        elif((SaoMergeTypeIndex==1)&(SaoMergeLeftAvai==1)&(SaoMergeUpAvai==1)):
+            SaoMergeMode = 'SAO_MERGE_LEFT'
+        elif((SaoMergeTypeIndex==2)&(SaoMergeLeftAvai==1)&(SaoMergeUpAvai==1)):
+            SaoMergeMode = 'SAO_MERGE_UP'
+        else:
+            SaoMergeMode = 'SAO_NON_MERGE'
+        return SaoMergeMode
 
 
     #在位流中检测是否已达到片的结尾，如果已到达片的结尾，返回TRUE，否则返回FALSE
     def is_end_of_patch(self):
         if(self.byte_aligned()):
-            if (self.get_read_data(32) == 0x80000001):
+            if (self.str_to_int(self.get_read_data(32)) == 0x80000001):
                 return True#片结束
         else:
-            if ((byte_aligned_next_bits(24) == 0x000001) & is_stuffing_pattern( )):
+            if ((self.str_to_int(self.byte_aligned_next_bits(24)) == 0x000001) & self.is_stuffing_pattern()):
                 return True #片结束
         return False
 
+    def byte_aligned_next_bits(self,n):
+        while((self.pointer_position%8)!=0):
+            self.pointer_position = self.pointer_position + 1
+        return self.get_read_data(n)
 
-    # 字节是否
+    # 字节是否对齐
     def byte_aligned(self):
         if((self.pointer_position%8)==0):
             return 1
@@ -301,9 +345,6 @@ class sequence_header:
         self.user_data_start_code=self.assign_data('user_data_start_code',32)
         while (self.get_read_data(24) != '000000000000000000000001'):
             self.user_data=self.assign_data('user_data',8)
-
-
-    
 
     #帧内预测图像头定义
     def intra_picture_header(self):
@@ -493,6 +534,7 @@ class sequence_header:
             print('position....................',self.pointer_position)
             self.pop_read_data(32)
             self.extension_and_user_data(1)
+            self.picture_data()
 
     # 参考图像队列配置集定义
     def reference_picture_list_set(self,mlist,rpls):
@@ -537,6 +579,12 @@ class sequence_header:
         print('out func weight_quant_matrix')
     
     
+    def is_stuffing_pattern(self):
+        n = self.pointer_position%8
+        if (self.str_to_int(self.get_read_data(8-n)) == (1<<(7-n))): # n=0～7，为位流指针在当前字节的位置偏移， n为0时位流指针指向当前字节最高位
+            return True
+        else:
+            return False
 
     def pop_read_data(self,read_length):
         string = self.data_file[self.pointer_position:self.pointer_position+read_length]
@@ -546,6 +594,23 @@ class sequence_header:
     def get_read_data(self,read_length):
         string = self.data_file[self.pointer_position:self.pointer_position+read_length]
         return string
+    def read_ae(self,str_type):
+        binIdx = -1
+        BypassFlag = 0
+        StuffingBitFlag = 0
+        if(str_type=='lcu_qp_delta'):
+            binIdx = binIdx + 1
+            BypassFlag = 0
+            StuffingBitFlag = 0
+            if((binIdx==0)&(self.PreviousDeltaQP==0)):
+                ctxIdxInc = 0
+            elif((binIdx==0)&(self.PreviousDeltaQP!=0)):
+                ctxIdxInc = 1
+            elif(binIdx==1):
+                ctxIdxInc = 2
+            else:
+                ctxIdxInc = 3
+        pass
     def read_ue(self):
         string_size=1
         while(self.get_read_data(1)=='0'):
@@ -583,12 +648,427 @@ class sequence_header:
         print(str_value,'  ',data_value)
         return data_value
 
+    #编码树定义
+    def coding_unit_tree(self,x0, y0, split, width, height, qt, mode,seq_data):
+        isBoundary = ((x0+width) > PicWidthInLuma) | ((y0+height) > PicHeightInLuma)
+        rightBoundary = ((x0+width) > PicWidthInLuma) & ((y0+height) <= PicHeightInLuma)
+        bottomBoundary = ( (x0 + width) <= PicWidthInLuma ) & ( (y0 + height) > PicHeightInLuma)
+        allowNoSplit = 0
+        allowSplitQt = 0
+        allowSplitBtVer = 0
+        allowSplitBtHor = 0
+        allowSplitEqtVer = 0
+        allowSplitEqtHor = 0
+        if (isBoundary):
+            allowNoSplit = 0
+            if ((PictureType == 0) & (width > 64) & (height > 64)):
+                allowSplitQt = 1
+                allowNoSplit = 1
+            elif ((width == 64 & height > 64) | (height == 64 & width > 64)):
+                allowSplitBtHor = 1
+                allowSplitBtVer = 1
+            elif ((rightBoundary==0) & (bottomBoundary==0)):
+                allowSplitQt = 1
+            elif (rightBoundary):
+                allowSplitBtVer = 1
+            elif (bottomBoundary):
+                allowSplitBtHor = 1
+        else:
+            if (((width == 64) & (height > 64)) | ((height == 64) & (width > 64))):
+                allowSplitBtHor = 1
+                allowSplitBtVer = 1
+                allowNoSplit = 1
+            elif (split >= MaxSplitTimes):
+                allowNoSplit = 1
+            elif ((PictureType == 0) & (width == 128) & (height == 128)) :
+                allowSplitQt = 1
+                allowNoSplit = 1
+            else :
+                if ((width <= height * MaxPartRatio) & (height <= width * MaxPartRatio)):
+                    allowNoSplit = 1
+                if ((width > MinQtSize) & qt):
+                    allowSplitQt = 1
+                if ((width <= MaxBtSize) & (height <= MaxBtSize) & (width > MinBtSize) & (height < MaxPartRatio*width)):
+                    allowSplitBtVer = 1
+                if ((width <= MaxBtSize) & (height <= MaxBtSize) & (height > MinBtSize) & (width <MaxPartRatio*height)):
+                    allowSplitBtHor = 1
+                if ((width <= MaxEqtSize) & (height <= MaxEqtSize) & (height >= MinEqtSize*2) & (width >= MinEqtSize*4) & (height*4 <= MaxPartRatio*width)):
+                    allowSplitEqtVer = 1
+                if ( (width <= MaxEqtSize) & (height <= MaxEqtSize) & (width >= MinEqtSize*2) & (height >= MinEqtSize*4) & (width*4 <= MaxPartRatio*height)):
+                    allowSplitEqtHor = 1
+        allowSplitBt = allowSplitBtVer | allowSplitBtHor
+        allowSplitEqt = allowSplitEqtVer | allowSplitEqtHor
+        if (allowSplitQt & (allowNoSplit | allowSplitBt | allowSplitEqt)):
+            self.qt_split_flag = self.read_ae()
+        if (QtSplitFlag==0):
+            if (allowNoSplit & (allowSplitBt | allowSplitEqt)):
+                self.bet_split_flag = self.read_ae()
+            if (BetSplitFlag):
+                if (allowSplitBt & allowSplitEqt):
+                    self.bet_split_type_flag = self.read_ae()
+                if ((BetSplitTypeFlag==0) & allowSplitBtHor & allowSplitBtVer) | (BetSplitTypeFlag &allowSplitEqtHor & allowSplitEqtVer):
+                    bet_split_dir_flag
+        if ((PictureType != 0) & ((((BetSplitFlag & (BetSplitTypeFlag==0)) | QtSplitFlag) & (width * height== 64)) | (BetSplitTypeFlag & (width * height == 128)))):
+            self.root_cu_mode = self.read_ae()
+            if(root_cu_mode):
+                modeChild = 'PRED_Intra_Only'
+            else:
+                modeChild = 'PRED_Inter_Only'
+        else:
+            modeChild = mode
+        if (ChildSizeOccur4):
+            if (Component == 0):
+                LumaWidth = width
+                LumaHeight = height
+                Component = 1
+        if (BlockSplitMode == 'SPLIT_QT'):
+            QtWidth = width / 2
+            QtHeight = height / 2
+            x1 = x0 + QtWidth
+            y1 = y0 + QtHeight
+            self.coding_unit_tree(x0, y0, split+1, QtWidth, QtHeight, 1, modeChild)
+            if (x1 < PicWidthInLuma):
+                self.coding_unit_tree(x1, y0, split+1, QtWidth, QtHeight, 1, modeChild)
+            if (y1 < PicHeightInLuma):
+                self.coding_unit_tree(x0, y1, split+1, QtWidth, QtHeight, 1, modeChild)
+            if ((x1 < PicWidthInLuma) & (y1 < PicHeightInLuma)):
+                self.coding_unit_tree(x1, y1, split+1, QtWidth, QtHeight, 1, modeChild)
+            if ((LumaWidth == width) & (LumaHeight == height) & ChildSizeOccur4):
+                self.coding_unit(x0, y0, width, height, 'PRED_No_Constraint', 'COMPONENT_Chroma')
+                Component = 0
+        elif (BlockSplitMode == 'SPLIT_BT_VER'):
+            x1 = x0 + width / 2
+            self.coding_unit_tree(x0, y0, split+1, width/2, height, 0, modeChild)
+            if (x1 < PicWidthInLuma):
+                self.coding_unit_tree(x1, y0, split+1, width/2, height, 0, modeChild)
+            if ((LumaWidth == width) & (LumaHeight == height) & ChildSizeOccur4):
+                self.coding_unit (x0, y0, width, height, 'PRED_No_Constraint', 'COMPONENT_Chroma')
+                Component = 0
+        elif (BlockSplitMode == 'SPLIT_BT_HOR'):
+            y1 = y0 + height / 2
+            self.coding_unit_tree(x0, y0, split+1, width, height/2, 0, modeChild)
+            if (y1 < PicHeightInLuma):
+                self.coding_unit_tree(x0, y1, split+1, width, height/2, 0, modeChild)
+            if ((LumaWidth == width) & (LumaHeight == height) & ChildSizeOccur4):
+                self.coding_unit(x0, y0, width, height, 'PRED_No_Constraint', 'COMPONENT_Chroma')
+                Component = 0
+        elif (BlockSplitMode == 'SPLIT_EQT_VER'):
+            x1 = x0 + width / 4
+            x2 = x0 + (3 * width / 4)
+            y1 = y0 + height / 2
+            self.coding_unit_tree(x0, y0, split+1, width/4, height, 0, modeChild)
+            self.coding_unit_tree(x1, y0, split+1, width/2, height/2, 0, modeChild)
+            self.coding_unit_tree(x1, y1, split+1, width/2, height/2, 0, modeChild)
+            self.coding_unit_tree(x2, y0, split+ 1, width/4, height, 0, modeChild)
+            if ((LumaWidth == width) & (LumaHeight == height) & ChildSizeOccur4):
+                self.coding_unit(x0, y0, width, height, 'PRED_No_Constraint', 'COMPONENT_Chroma')
+                Component = 0
+        elif (BlockSplitMode == 'SPLIT_EQT_HOR') :
+            x1 = x0 + width / 2
+            y1 = y0 + height / 4
+            y2 = y0 + (3 * height / 4)
+            self.coding_unit_tree(x0, y0, split+1, width, height/4, 0, modeChild)
+            self.coding_unit_tree(x0, y1, split+1, width/2, height/2, 0, modeChild)
+            self.coding_unit_tree(x1, y1, split+1, width/2, height/2, 0, modeChild)
+            self.coding_unit_tree(x0, y2, split+1, width, height/4, 0, modeChild)
+            if ((LumaWidth == width) & (LumaHeight == height) & ChildSizeOccur4):
+                self.coding_unit(x0, y0, width, height, 'PRED_No_Constraint', 'COMPONENT_Chroma')
+                Component = 0
+        else:
+            if (Component == 0):
+                self.coding_unit(x0, y0, width, height, mode, 'COMPONENT_LUMACHROMA')
+            elif (Component == 1):
+                self.coding_unit(x0, y0, width, height, mode, 'COMPONENT_LUMA')
 
+    #编码单元定义
+    def coding_unit(self,x0, y0, width, height, mode, component):
+        if (component == 'COMPONENT_Chroma'):
+            if ((priorCuMode == 1) & (chroma_format != '00')):
+                self.intra_chroma_pred_mode = self.read_ae()
+            NumOfTransBlocks = 3
+            ctp_y[0] = 0
+            CuCtp += ctp_y[0]
+            if (IntraChromaPredMode != 'Intra_Chroma_PCM'):
+                self.ctp_u = self.read_ae()
+                CuCtp += (ctp_u << 1)
+                self.ctp_v = self.read_ae()
+                CuCtp += (ctp_v << 2)
+            for i in range(2):
+                IsPcmMode[i-2+NumOfTransBlocks] = (IntraChromaPredMode == 'Intra_Chroma_PCM')
+                IsChroma = 0
+                if (i == NumOfTransBlocks -1 | i == NumOfTransBlocks -2):
+                    IsChroma = 1
+                block(i, width, height, CuCtp, IsChroma, IsPcmMode[i], component)
+        else:
+            if (PictureType != 0):
+                if (mode != 'PRED_Intra_Only'):
+                    self.skip_flag = self.read_ae()
+                if (self.skip_flag):
+                    if (UmveEnableFlag):
+                        self.umve_flag = self.read_ae()
+                    if (AffineEnableFlag & (UmveFlag==0)  & (width >= 16) & (height >= 16)):
+                        self.affine_flag = self.read_ae()
+                if (~SkipFlag):
+                    if (mode != 'PRED_Intra_Only'):
+                        self.direct_flag = self.read_ae()
+                    if (DirectFlag):
+                        if (UmveEnableFlag):
+                            self.umve_flag = self.read_ae()
+                        if (AffineEnableFlag & (UmveFlag==0)  & (width >= 16) & (height >= 16)):
+                            self.affine_flag = self.read_ae()
+                    if (~DirectFlag & (mode == 'PRED_No_Constraint')):
+                        self.intra_cu_flag = self.read_ae()
+            PartSize = 'SIZE_2Mx2N'
+            if (DtEnableFlag & IntraCuFlag):
+                allowDtHorSplit = (height >= DtMinSize) & (height <= DtMaxSize) & (width / height < 4)& (width <= DtMaxSize)
+                allowDtVerSplit = (width >= DtMinSize) & (width <= DtMaxSize) & (height / width < 4)& (height <= DtMaxSize)
+                if (allowDtHorSplit | allowDtVerSplit):
+                    self.dt_split_flag = self.read_ae()
+                    if (DtSplitFlag):
+                        if (allowDtHorSplit & allowDtVerSplit):
+                            self.dt_split_dir = self.read_ae()
+                        elif (allowDtHorSplit):
+                            DtSplitDir = 1
+                        else:
+                            DtSplitDir = 0
+                        if(DtSplitDir):
+                            self.dt_split_hqt_flag = self.read_ae()
+                            if (~self.dt_split_hqt_flag):
+                                self.dt_split_hadt_flag = self.read_ae()
+                        else:
+                            self.dt_split_vqt_flag = self.read_ae()
+                            if (~self.dt_split_vqt_flag):
+                                self.dt_split_vadt_flag = self.read_ae()
+            if (UmveFlag):
+                self.umve_mv_idx = self.read_ae()
+                self.umve_step_idx = self.read_ae()
+                self.umve_dir_idx = self.read_ae()
+            elif ((SkipFlag | DirectFlag) & AffineFlag):
+                self.cu_affine_cand_idx = self.read_ae()
+            elif (SkipFlag | DirectFlag):
+                self.cu_subtype_index = self.read_ae()
+            if ((SkipFlag==0)  & (DirectFlag==0)):
+                if (IntraCuFlag==0):
+                    if (AffineEnableFlag & (width >= 16) & (height >= 16)):
+                        self.affine_flag = self.read_ae()
+                if (AmvrEnableFlag):
+                    if (EmvrEnableFlag & ~AffineFlag):
+                        self.extend_mvr_flag = self.read_ae()
+                    if (AffineFlag):
+                        self.affine_amvr_index = self.read_ae()
+                    else:
+                        self.amvr_index = self.read_ae()
+                if (PictureType == 2):
+                    self.inter_pred_ref_mode = self.read_ae()
+                if (SmvdEnableFlag & SmvdApplyFlag & ~AffineFlag & (InterPredRefMode == 2)& ~ExtendMvrFlag):
+                    self.smvd_flag = self.read_ae()
+                if (MvExistL0):
+                    if ((SmvdFlag==0) & NumRefActive[0] > 1):
+                        self.pu_reference_index_l0 = self.read_ae()
+                    self.mv_diff_x_abs_l0 = self.read_ae()
+                    if (MvDiffXAbsL0):
+                        self.mv_diff_x_sign_l0 = self.read_ae()
+                    self.mv_diff_y_abs_l0 = self.read_ae()
+                    if (MvDiffYAbsL0):
+                        self.mv_diff_y_sign_l0 = self.read_ae()
+                    if (AffineFlag):
+                        self.mv_diff_x_abs_l0_affine = self.read_ae()
+                        if (MvDiffXAbsL0Affine):
+                            self.mv_diff_x_sign_l0_affine = self.read_ae()
+                        self.mv_diff_y_abs_l0_affine = self.read_ae()
+                        if (MvDiffYAbsL0Affine):
+                            self.mv_diff_y_sign_l0_affine = self.read_ae()
+                if (MvExistL1 &  (SmvdFlag==0)):
+                    if (NumRefActive[1] > 1):
+                        self.pu_reference_index_l1 = self.read_ae()
+                    self.mv_diff_x_abs_l1 = self.read_ae()
+                    if (MvDiffXAbsL1):
+                        self.mv_diff_x_sign_l1 = self.read_ae()
+                    self.mv_diff_y_abs_l1 = self.read_ae()
+                    if (MvDiffYAbsL1):
+                        self.mv_diff_y_sign_l1 = self.read_ae()
+                    if (AffineFlag):
+                        self.mv_diff_x_abs_l1_affine = self.read_ae()
+                        if (MvDiffXAbsL1Affine):
+                            self.mv_diff_x_sign_l1_affine = self.read_ae()
+                        self.mv_diff_y_abs_l1_affine = self.read_ae()
+                        if (MvDiffYAbsL1Affine):
+                            self.mv_diff_y_sign_l1_affine = self.read_ae()
+            else:
+                TuOrder = 0
+                for i in range(NumOfIntraPredBlock):
+                    self.intra_luma_pred_mode = self.read_ae()
+                if (PartSize == 'SIZE_2Mx2N'):
+                    IsPcmMode[TuOrder] = (IntraLumaPredMode == 'Intra_Luma_PCM')
+                    TuOrder=TuOrder+1
+                else:
+                    IsPcmMode[0] = 0
+                    IsPcmMode[1] = 0
+                    IsPcmMode[2] = 0
+                    IsPcmMode[3] = 0
+                    TuOrder=3
+                if (IntraCuFlag & (chroma_format != '00') & (component=='COMPONENT_LUMACHROMA')):
+                    self.intra_chroma_pred_mode = self.read_ae()
+                    IsPcmMode[TuOrder+1] = (IntraChromaPredMode == 'Intra_Chroma_PCM')
+                    IsPcmMode[TuOrder+2] = (IntraChromaPredMode == 'Intra_Chroma_PCM')
+                if (IpfEnableFlag & (PartSize == 'SIZE_2Mx2N') & (~IsPcmMode[0])):
+                    self.ipf_flag = self.read_ae()
+        if ((IntraCuFlag==0) & (SkipFlag==0)):
+            if ((DirectFlag==0) & component == 'COMPONENT_LUMACHROMA'):
+                self.ctp_zero_flag = self.read_ae()
+            CuCtp = 0
+            if ((CtpZeroFlag==0)):
+                if (PbtEnableFlag & (width / height < 4) & (height / width < 4) & (width >= 8) &(width <= 32)& (height >= 8) & (height <= 32)):
+                    self.pbt_cu_flag = self.read_ae()
+                if (PbtCuFlag==0):
+                    if (component == 'COMPONENT_LUMACHROMA'):
+                        self.ctp_u = self.read_ae()
+                        self.ctp_v = self.read_ae()
+                    CuCtp = ctp_u << (NumOfTransBlocks)
+                    CuCtp = CuCtp>>2
+                    CuCtp += (ctp_v << (NumOfTransBlocks))
+                    CuCtp = CuCtp>>1
+                    if (((ctp_u != 0) | (ctp_v != 0)) | ( component !='COMPONENT_LUMACHROMA')):
+                        self.ctp_y[0] = self.read_ae()
+                        CuCtp += ctp_y[0]
+                    else:
+                        CuCtp += ctp_y[0]
+                else:
+                    if (component == 'COMPONENT_LUMACHROMA'):
+                        self.ctp_u = self.read_ae()
+                        self.ctp_v = self.read_ae()
+                    CuCtp = ctp_u << (NumOfTransBlocks)
+                    CuCtp = CuCtp>>2
+                    CuCtp += (ctp_v << (NumOfTransBlocks))
+                    CuCtp = CuCtp>>1
+                    for i in range((NumOfTransBlocks-2)):
+                        self.ctp_y[i] = self.read_ae()
+                        CuCtp += (ctp_y[i] << i)
+        elif (~ SkipFlag):
+            CuCtp = 0
+            if (~ IsPcmMode[0]):
+                for i in range(NumOfTransBlocks-2):
+                    self.ctp_y[i] = self.read_ae()
+                    CuCtp += (ctp_y[i] << i)
+            if ((component == 'COMPONENT_LUMACHROMA') & (IntraChromaPredMode !='Intra_Chroma_PCM')):
+                self.ctp_u = self.read_ae()
+                self.ctp_v = self.read_ae()
+            CuCtp += (ctp_u << (NumOfTransBlocks-2))
+            CuCtp += (ctp_v << (NumOfTransBlocks-1))
+        for i in range(NumOfTransBlocks):
+            if (i < NumOfTransBlocks-2):
+                if((TransformSplitDirection == 0) | (TransformSplitDirection == 2)):
+                    blockWidth = width
+                elif(TransformSplitDirection==1):
+                    blockWidth=width >> 1
+                else:
+                    blockWidth=width >> 2
+                #
+                if((TransformSplitDirection == 0) | (TransformSplitDirection == 3)):
+                    blockHeight = height
+                elif(TransformSplitDirection==1):
+                    blockHeight = height >> 1
+                else:
+                    blockHeight = height >> 2
+                #
+                if((TransformSplitDirection == 0) | (TransformSplitDirection == 2)):
+                    blockX = 0
+                elif(TransformSplitDirection==1):
+                    blockX = (blockWidth >> 1) * (i % 2)
+                else:
+                    blockX = (blockWidth >> 2) * i
+                #
+                if((TransformSplitDirection == 0) | (TransformSplitDirection == 3)):
+                    blockY = 0
+                elif(TransformSplitDirection==1):
+                    blockY = (blockHeight >> 1) * (i / 2)
+                else:
+                    blockY = (blockHeight >> 2) * i
+                #blockWidth = ((TransformSplitDirection == 0) | (TransformSplitDirection == 2)) ?width : (TransformSplitDirection == 1 ? width >> 1 : width >> 2)
+                #blockHeight = ((TransformSplitDirection == 0) | (TransformSplitDirection == 3)) ?height : (TransformSplitDirection == 1 ? height >> 1 : height >> 2)
+                #blockX = x0 + (((TransformSplitDirection == 0) | (TransformSplitDirection == 2)) ? 0 :TransformSplitDirection == 1 ? ((blockWidth >> 1) * (i % 2)) : ((blockWidth >> 2) * i)))
+                #blockY = y0 + (((TransformSplitDirection == 0) | (TransformSplitDirection == 3)) ? 0 :TransformSplitDirection == 1 ? ((blockHeight >> 1) * (i / 2)) : ((blockHeight >> 2) * i)))
+                IsChroma = 0
+                if (i == NumOfTransBlocks -1 | i == NumOfTransBlocks -2):
+                    IsChroma = 1
+                self.block(i, blockWidth, blockHeight, CuCtp, IsChroma, IsPcmMode[i], component)
     
 
-'''
-#序列显示扩展定义
+    #变换块定义
+    def block(self,i, blockWidth, blockHeight, CuCtp, isChroma, isPcm, component):
+        M1 = blockWidth
+        M2 = blockHeight
+        for x in range(M1):
+            for y in range(M2):
+                QuantCoeffMatrix[x][y] = 0
+        if (~isPcm):
+            if (CuCtp & (1 << i)):
+                blockWidth = blockWidth / 2 if isChroma else blockWidth
+                blockHeight = blockHeight / 2 if isChroma else blockHeight
+                #blockWidth = isChroma ? blockWidth / 2 : blockWidth
+                #blockHeight = isChroma ? blockHeight / 2 : blockHeight
+                idxW = Log(blockWidth) -1
+                idxH = Log(blockHeight) -1
+                NumOfCoeff = blockWidth * blockHeight
+                ScanPosOffset = 0
+                while (~coeff_last):
+                    self.coeff_run = self.read_ae()
+                    self.coeff_level_minus1 = self.read_ae()
+                    self.coeff_sign = self.read_ae()
+                    AbsLevel = coeff_level_minus1 + 1
+                    ScanPosOffset = ScanPosOffset + coeff_run
+                    PosxInBlk = InvScanCoeffInBlk[idxW][idxH][ScanPosOffset][0]
+                    PosyInBlk = InvScanCoeffInBlk[idxW][idxH][ScanPosOffset][1]
+                    QuantCoeffMatrix[PosxInBlk][PosyInBlk] = (~AbsLevel) if coeff_sign else AbsLevel
+                    #QuantCoeffMatrix[PosxInBlk][PosyInBlk] = coeff_sign ? –AbsLevel : AbsLevel
+                    if (ScanPosOffset >= NumOfCoeff - 1):
+                        break
+                    self.coeff_last = self.read_ae()
+                    ScanPosOffset = ScanPosOffset + 1
+        elif ((component != 'COMPONENT_CHROMA' & i == 0) | (component =='COMPONENT_CHROMA' & i == 1)):
+            self.aec_ipcm_stuffing_bit = self.read_ae()
+            while (~byte_aligned()):
+                self.aec_byte_alignment_bit0 = self.read_ae()
+        M1 = blockWidth / 2 if isChroma else blockWidth
+        M2 = blockHeight / 2 if isChroma else blockHeight
+        #M1 = isChroma ? blockWidth / 2 : blockWidth
+        #M2= isChroma ? blockHeight / 2 : blockHeight
+        xMin = Min(32, M1)
+        yMin = Min(32, M2)
+        for yStep in range(M2/yMin):
+            for xStep in range(M1/xMin):
+                for y in range(yMin):
+                    for x in range(xMin):
+                        self.pcm_coeff = self.read_ae()
+                        QuantCoeffMatrix[x+xStep*xMin][y + yStep*yMin] = pcm_coeff
 
+    #自适应修正滤波参数定义
+    def alf_parameter_set(self):
+        if (PictureAlfEnableFlag[0] == 1):
+            self.alf_filter_num_minus1 = self.read_ue()
+            for i in range(alf_filter_num_minus1+1):
+                if ((i > 0) & (alf_filter_num_minus1 != 15)):
+                    self.alf_region_distance[i] = self.read_ue()
+                for j in range(9):
+                    self.alf_coeff_luma[i][j] = self.read_se()
+        if(PictureAlfEnableFlag[1] == 1):
+            for j in range(9):
+                self.alf_coeff_chroma[0][j] = self.read_se()
+        if (PictureAlfEnableFlag[2] == 1):
+            for j in range(9):
+                self.alf_coeff_chroma[1][j] = self.read_se()
+
+    #在位流中寻找下一个起始码，将位流指针指向起始码前缀的第一个二进制位。
+    def next_start_code(self):
+        self.stuffing_bit=self.assign_data('stuffing_bit',1)#1
+        while (~ self.byte_aligned()):
+            self.stuffing_bit=self.assign_data('stuffing_bit',1)#0
+        while (self.get_read_data(24) != '000000000000000000000001'):#起始码前缀
+            self.stuffing_byte=self.assign_data('stuffing_byte',8)#0#00000000
+
+'''
+
+#序列显示扩展定义
 class sequence_display_extension:
     def __init__(self):
         self.extension_id=4#0010,不同的值有不同的含义
@@ -917,449 +1397,4 @@ class picture_display_extension:
             picture_centre_vertical_offset
             marker_bit
 
-
-#编码树定义
-
-class coding_unit_tree():
-    def __init__(self,x0, y0, split, width, height, qt, mode,seq_data):
-        isBoundary = ((x0+width) > PicWidthInLuma) | ((y0+height) > PicHeightInLuma)
-        rightBoundary = ((x0+width) > PicWidthInLuma) & ((y0+height) <= PicHeightInLuma)
-        bottomBoundary = ( (x0 + width) <= PicWidthInLuma ) & ( (y0 + height) > PicHeightInLuma)
-        allowNoSplit = 0
-        allowSplitQt = 0
-        allowSplitBtVer = 0
-        allowSplitBtHor = 0
-        allowSplitEqtVer = 0
-        allowSplitEqtHor = 0
-        if (isBoundary):
-            allowNoSplit = 0
-            if ((PictureType == 0) & (width > 64) & (height > 64)):
-                allowSplitQt = 1
-                allowNoSplit = 1
-            elif ((width == 64 & height > 64) | (height == 64 & width > 64)):
-                allowSplitBtHor = 1
-                allowSplitBtVer = 1
-            elif ((rightBoundary==0) & (bottomBoundary==0)):
-                allowSplitQt = 1
-            elif (rightBoundary):
-                allowSplitBtVer = 1
-            elif (bottomBoundary):
-                allowSplitBtHor = 1
-        else:
-            if (((width == 64) & (height > 64)) | ((height == 64) & (width > 64))):
-                allowSplitBtHor = 1
-                allowSplitBtVer = 1
-                allowNoSplit = 1
-            elif (split >= MaxSplitTimes):
-                allowNoSplit = 1
-            elif ((PictureType == 0) & (width == 128) & (height == 128)) :
-                allowSplitQt = 1
-                allowNoSplit = 1
-            else :
-                if ((width <= height * MaxPartRatio) & (height <= width * MaxPartRatio)):
-                    allowNoSplit = 1
-                if ((width > MinQtSize) & qt):
-                    allowSplitQt = 1
-                if ((width <= MaxBtSize) & (height <= MaxBtSize) & (width > MinBtSize) & (height < MaxPartRatio*width)):
-                    allowSplitBtVer = 1
-                if ((width <= MaxBtSize) & (height <= MaxBtSize) & (height > MinBtSize) & (width <MaxPartRatio*height)):
-                    allowSplitBtHor = 1
-                if ((width <= MaxEqtSize) & (height <= MaxEqtSize) & (height >= MinEqtSize*2) & (width >= MinEqtSize*4) & (height*4 <= MaxPartRatio*width)):
-                    allowSplitEqtVer = 1
-                if ( (width <= MaxEqtSize) & (height <= MaxEqtSize) & (width >= MinEqtSize*2) & (height >= MinEqtSize*4) & (width*4 <= MaxPartRatio*height)):
-                    allowSplitEqtHor = 1
-        allowSplitBt = allowSplitBtVer | allowSplitBtHor
-        allowSplitEqt = allowSplitEqtVer | allowSplitEqtHor
-        if (allowSplitQt & (allowNoSplit | allowSplitBt | allowSplitEqt)):
-            qt_split_flag
-        if (QtSplitFlag==0):
-            if (allowNoSplit & (allowSplitBt | allowSplitEqt)):
-                bet_split_flag
-            if (BetSplitFlag):
-                if (allowSplitBt & allowSplitEqt):
-                    bet_split_type_flag
-                if ((BetSplitTypeFlag==0) & allowSplitBtHor & allowSplitBtVer) | (BetSplitTypeFlag &allowSplitEqtHor & allowSplitEqtVer):
-                    bet_split_dir_flag
-        if ((PictureType != 0) & ((((BetSplitFlag & (BetSplitTypeFlag==0)) | QtSplitFlag) & (width * height== 64)) | (BetSplitTypeFlag & (width * height == 128)))):
-            root_cu_mode
-            if(root_cu_mode):
-                modeChild = 'PRED_Intra_Only'
-            else:
-                modeChild = 'PRED_Inter_Only'
-            
-        else:
-            modeChild = mode
-        if (ChildSizeOccur4):
-            if (Component == 0):
-                LumaWidth = width
-                LumaHeight = height
-                Component = 1
-        if (BlockSplitMode == 'SPLIT_QT'):
-            QtWidth = width / 2
-            QtHeight = height / 2
-            x1 = x0 + QtWidth
-            y1 = y0 + QtHeight
-            coding_unit_tree(x0, y0, split+1, QtWidth, QtHeight, 1, modeChild)
-            if (x1 < PicWidthInLuma):
-                coding_unit_tree(x1, y0, split+1, QtWidth, QtHeight, 1, modeChild)
-            if (y1 < PicHeightInLuma):
-                coding_unit_tree(x0, y1, split+1, QtWidth, QtHeight, 1, modeChild)
-            if ((x1 < PicWidthInLuma) & (y1 < PicHeightInLuma)):
-                coding_unit_tree(x1, y1, split+1, QtWidth, QtHeight, 1, modeChild)
-            if ((LumaWidth == width) & (LumaHeight == height) & ChildSizeOccur4):
-                coding_unit(x0, y0, width, height, 'PRED_No_Constraint', 'COMPONENT_Chroma')
-                Component = 0
-        elif (BlockSplitMode == 'SPLIT_BT_VER'):
-            x1 = x0 + width / 2
-            coding_unit_tree(x0, y0, split+1, width/2, height, 0, modeChild)
-            if (x1 < PicWidthInLuma):
-                coding_unit_tree(x1, y0, split+1, width/2, height, 0, modeChild)
-            if ((LumaWidth == width) & (LumaHeight == height) & ChildSizeOccur4):
-                coding_unit (x0, y0, width, height, 'PRED_No_Constraint', 'COMPONENT_Chroma')
-                Component = 0
-        elif (BlockSplitMode == 'SPLIT_BT_HOR'):
-            y1 = y0 + height / 2
-            coding_unit_tree(x0, y0, split+1, width, height/2, 0, modeChild)
-            if (y1 < PicHeightInLuma):
-                coding_unit_tree(x0, y1, split+1, width, height/2, 0, modeChild)
-            if ((LumaWidth == width) & (LumaHeight == height) & ChildSizeOccur4):
-                coding_unit(x0, y0, width, height, 'PRED_No_Constraint', 'COMPONENT_Chroma')
-                Component = 0
-        elif (BlockSplitMode == 'SPLIT_EQT_VER'):
-            x1 = x0 + width / 4
-            x2 = x0 + (3 * width / 4)
-            y1 = y0 + height / 2
-            coding_unit_tree(x0, y0, split+1, width/4, height, 0, modeChild)
-            coding_unit_tree(x1, y0, split+1, width/2, height/2, 0, modeChild)
-            coding_unit_tree(x1, y1, split+1, width/2, height/2, 0, modeChild)
-            coding_unit_tree(x2, y0, split+ 1, width/4, height, 0, modeChild)
-            if ((LumaWidth == width) & (LumaHeight == height) & ChildSizeOccur4):
-                coding_unit(x0, y0, width, height, 'PRED_No_Constraint', 'COMPONENT_Chroma')
-                Component = 0
-        elif (BlockSplitMode == 'SPLIT_EQT_HOR') :
-            x1 = x0 + width / 2
-            y1 = y0 + height / 4
-            y2 = y0 + (3 * height / 4)
-            coding_unit_tree(x0, y0, split+1, width, height/4, 0, modeChild)
-            coding_unit_tree(x0, y1, split+1, width/2, height/2, 0, modeChild)
-            coding_unit_tree(x1, y1, split+1, width/2, height/2, 0, modeChild)
-            coding_unit_tree(x0, y2, split+1, width, height/4, 0, modeChild)
-            if ((LumaWidth == width) & (LumaHeight == height) & ChildSizeOccur4):
-                coding_unit(x0, y0, width, height, 'PRED_No_Constraint', 'COMPONENT_Chroma')
-                Component = 0
-        else:
-            if (Component == 0):
-                coding_unit(x0, y0, width, height, mode, 'COMPONENT_LUMACHROMA')
-            elif (Component == 1):
-                coding_unit(x0, y0, width, height, mode, 'COMPONENT_LUMA')
-        
-
-#编码单元定义
-
-class coding_unit:
-    def __init__(x0, y0, width, height, mode, component):
-        if (component == 'COMPONENT_Chroma'):
-            if ((priorCuMode == 1) & (chroma_format != '00')):
-                intra_chroma_pred_mode
-            NumOfTransBlocks = 3
-            ctp_y[0] = 0
-            CuCtp += ctp_y[0]
-            if (IntraChromaPredMode != 'Intra_Chroma_PCM'):
-                ctp_u
-                CuCtp += (ctp_u << 1)
-                ctp_v
-                CuCtp += (ctp_v << 2)
-            for i in range(2):
-                IsPcmMode[i-2+NumOfTransBlocks] = (IntraChromaPredMode == 'Intra_Chroma_PCM')
-                IsChroma = 0
-                if (i == NumOfTransBlocks -1 | i == NumOfTransBlocks -2):
-                    IsChroma = 1
-                block(i, width, height, CuCtp, IsChroma, IsPcmMode[i], component)
-        else:
-            if (PictureType != 0):
-                if (mode != 'PRED_Intra_Only'):
-                    self.skip_flag 
-                if (self.skip_flag):
-                    if (UmveEnableFlag):
-                        umve_flag
-                    if (AffineEnableFlag & (UmveFlag==0)  & (width >= 16) & (height >= 16)):
-                        affine_flag
-                if (~SkipFlag):
-                    if (mode != 'PRED_Intra_Only'):
-                        direct_flag
-                    if (DirectFlag):
-                        if (UmveEnableFlag):
-                            umve_flag
-                        if (AffineEnableFlag & (UmveFlag==0)  & (width >= 16) & (height >= 16)):
-                            affine_flag
-                    if (~DirectFlag & (mode == 'PRED_No_Constraint')):
-                        intra_cu_flag
-            PartSize = 'SIZE_2Mx2N'
-            if (DtEnableFlag & IntraCuFlag):
-                allowDtHorSplit = (height >= DtMinSize) & (height <= DtMaxSize) & (width / height < 4)& (width <= DtMaxSize)
-                allowDtVerSplit = (width >= DtMinSize) & (width <= DtMaxSize) & (height / width < 4)& (height <= DtMaxSize)
-                if (allowDtHorSplit | allowDtVerSplit):
-                    dt_split_flag
-                    if (DtSplitFlag):
-                        if (allowDtHorSplit & allowDtVerSplit):
-                            dt_split_dir
-                        elif (allowDtHorSplit):
-                            DtSplitDir = 1
-                        else:
-                            DtSplitDir = 0
-                    else:
-                        dt_split_vqt_flag
-                        if (~DtSplitVqtFlag):
-                            dt_split_vadt_flag
-            if (UmveFlag):
-                umve_mv_idx
-                umve_step_idx
-                umve_dir_idx
-            elif ((SkipFlag | DirectFlag) & AffineFlag):
-                cu_affine_cand_idx
-            elif (SkipFlag | DirectFlag):
-                cu_subtype_index
-            if ((SkipFlag==0)  & (DirectFlag==0)):
-                if (IntraCuFlag==0):
-                    if (AffineEnableFlag & (width >= 16) & (height >= 16)):
-                        affine_flag
-                if (AmvrEnableFlag):
-                    if (EmvrEnableFlag & ~AffineFlag):
-                        extend_mvr_flag
-                    if (AffineFlag):
-                        affine_amvr_index
-                    else:
-                        amvr_index
-                if (PictureType == 2):
-                    inter_pred_ref_mode
-                if (SmvdEnableFlag & SmvdApplyFlag & ~AffineFlag & (InterPredRefMode == 2)& ~ExtendMvrFlag):
-                    smvd_flag
-                if (MvExistL0):
-                    if ((SmvdFlag==0) & NumRefActive[0] > 1):
-                        pu_reference_index_l0
-                    mv_diff_x_abs_l0
-                    if (MvDiffXAbsL0):
-                        mv_diff_x_sign_l0
-                    mv_diff_y_abs_l0
-                    if (MvDiffYAbsL0):
-                        mv_diff_y_sign_l0
-                    if (AffineFlag):
-                        mv_diff_x_abs_l0_affine
-                    if (MvDiffXAbsL0Affine):
-                        mv_diff_x_sign_l0_affine
-                    mv_diff_y_abs_l0_affine
-                    if (MvDiffYAbsL0Affine):
-                        mv_diff_y_sign_l0_affine
-                if (MvExistL1 &  (SmvdFlag==0)):
-                    if (NumRefActive[1] > 1):
-                        pu_reference_index_l1
-                    mv_diff_x_abs_l1
-                    if (MvDiffXAbsL1):
-                        mv_diff_x_sign_l1
-                    mv_diff_y_abs_l1
-                    if (MvDiffYAbsL1):
-                        mv_diff_y_sign_l1
-                    if (AffineFlag):
-                        mv_diff_x_abs_l1_affine
-                        if (MvDiffXAbsL1Affine):
-                            mv_diff_x_sign_l1_affine
-                        mv_diff_y_abs_l1_affine
-                        if (MvDiffYAbsL1Affine):
-                            mv_diff_y_sign_l1_affine
-            else:
-                TuOrder = 0
-                for i in range(NumOfIntraPredBlock):
-                    intra_luma_pred_mode
-                if (PartSize == 'SIZE_2Mx2N'):
-                    IsPcmMode[TuOrder] = (IntraLumaPredMode == 'Intra_Luma_PCM')
-                    TuOrder=TuOrder+1
-                else:
-                    IsPcmMode[0] = 0
-                    IsPcmMode[1] = 0
-                    IsPcmMode[2] = 0
-                    IsPcmMode[3] = 0
-                    TuOrder=3
-                if (IntraCuFlag & (chroma_format != '00') & (component=='COMPONENT_LUMACHROMA')):
-                    intra_chroma_pred_mode
-                    IsPcmMode[TuOrder+1] = (IntraChromaPredMode == 'Intra_Chroma_PCM')
-                    IsPcmMode[TuOrder+2] = (IntraChromaPredMode == 'Intra_Chroma_PCM')
-                if (IpfEnableFlag & (PartSize == 'SIZE_2Mx2N') & (~IsPcmMode[0])):
-                    ipf_flag
-        if ((IntraCuFlag==0) & (SkipFlag==0)):
-            if ((DirectFlag==0) & component == 'COMPONENT_LUMACHROMA'):
-                ctp_zero_flag
-            CuCtp = 0
-            if ((CtpZeroFlag==0)):
-                if (PbtEnableFlag & (width / height < 4) & (height / width < 4) & (width >= 8) &(width <= 32)& (height >= 8) & (height <= 32)):
-                    pbt_cu_flag
-                if (PbtCuFlag==0):
-                    if (component == 'COMPONENT_LUMACHROMA'):
-                        ctp_u
-                        ctp_v
-                    CuCtp = ctp_u << (NumOfTransBlocks)
-                    CuCtp = CuCtp>>2
-                    CuCtp += (ctp_v << (NumOfTransBlocks))
-                    CuCtp = CuCtp>>1
-                    if (((ctp_u != 0) | (ctp_v != 0)) | ( component !='COMPONENT_LUMACHROMA')):
-                        ctp_y[0]
-                        CuCtp += ctp_y[0]
-                    else:
-                        CuCtp += ctp_y[0]
-                else:
-                    if (component == 'COMPONENT_LUMACHROMA'):
-                        ctp_u
-                        ctp_v
-                    CuCtp = ctp_u << (NumOfTransBlocks)
-                    CuCtp = CuCtp>>2
-                    CuCtp += (ctp_v << (NumOfTransBlocks))
-                    CuCtp = CuCtp>>1
-                    for i in range((NumOfTransBlocks-2)):
-                        ctp_y[i]
-                        CuCtp += (ctp_y[i] << i)
-        elif (~ SkipFlag):
-            CuCtp = 0
-            if (~ IsPcmMode[0]):
-                for i in range(NumOfTransBlocks-2):
-                    ctp_y[i]
-                    CuCtp += (ctp_y[i] << i)
-            if ((component == 'COMPONENT_LUMACHROMA') & (IntraChromaPredMode !='Intra_Chroma_PCM')):
-                ctp_u
-                ctp_v
-            CuCtp += (ctp_u << (NumOfTransBlocks-2))
-            CuCtp += (ctp_v << (NumOfTransBlocks-1))
-        for i in range(NumOfTransBlocks):
-            if (i < NumOfTransBlocks-2):
-                if((TransformSplitDirection == 0) | (TransformSplitDirection == 2)):
-                    blockWidth = width
-                elif(TransformSplitDirection==1):
-                    blockWidth=width >> 1
-                else:
-                    blockWidth=width >> 2
-                #
-                if((TransformSplitDirection == 0) | (TransformSplitDirection == 3)):
-                    blockHeight = height
-                elif(TransformSplitDirection==1):
-                    blockHeight = height >> 1
-                else:
-                    blockHeight = height >> 2
-                #
-                if((TransformSplitDirection == 0) | (TransformSplitDirection == 2)):
-                    blockX = 0
-                elif(TransformSplitDirection==1):
-                    blockX = (blockWidth >> 1) * (i % 2)
-                else:
-                    blockX = (blockWidth >> 2) * i
-                #
-                if((TransformSplitDirection == 0) | (TransformSplitDirection == 3)):
-                    blockY = 0
-                elif(TransformSplitDirection==1):
-                    blockY = (blockHeight >> 1) * (i / 2)
-                else:
-                    blockY = (blockHeight >> 2) * i
-                #blockWidth = ((TransformSplitDirection == 0) | (TransformSplitDirection == 2)) ?width : (TransformSplitDirection == 1 ? width >> 1 : width >> 2)
-                #blockHeight = ((TransformSplitDirection == 0) | (TransformSplitDirection == 3)) ?height : (TransformSplitDirection == 1 ? height >> 1 : height >> 2)
-                #blockX = x0 + (((TransformSplitDirection == 0) | (TransformSplitDirection == 2)) ? 0 :TransformSplitDirection == 1 ? ((blockWidth >> 1) * (i % 2)) : ((blockWidth >> 2) * i)))
-                #blockY = y0 + (((TransformSplitDirection == 0) | (TransformSplitDirection == 3)) ? 0 :TransformSplitDirection == 1 ? ((blockHeight >> 1) * (i / 2)) : ((blockHeight >> 2) * i)))
-                IsChroma = 0
-                if (i == NumOfTransBlocks -1 | i == NumOfTransBlocks -2):
-                    IsChroma = 1
-                block(i, blockWidth, blockHeight, CuCtp, IsChroma, IsPcmMode[i], component)
-
-
-#变换块定义
-
-class block:
-    def __init__(i, blockWidth, blockHeight, CuCtp, isChroma, isPcm, component):
-        M1 = blockWidth
-        M2 = blockHeight
-        for x in range(M1):
-            for y in range(M2):
-                QuantCoeffMatrix[x][y] = 0
-        if (~isPcm):
-            if (CuCtp & (1 << i)):
-                blockWidth = blockWidth / 2 if isChroma else blockWidth
-                blockHeight = blockHeight / 2 if isChroma else blockHeight
-                #blockWidth = isChroma ? blockWidth / 2 : blockWidth
-                #blockHeight = isChroma ? blockHeight / 2 : blockHeight
-                idxW = Log(blockWidth) -1
-                idxH = Log(blockHeight) -1
-                NumOfCoeff = blockWidth * blockHeight
-                ScanPosOffset = 0
-                while (~coeff_last):
-                    coeff_run
-                    coeff_level_minus1
-                    coeff_sign
-                    AbsLevel = coeff_level_minus1 + 1
-                    ScanPosOffset = ScanPosOffset + coeff_run
-                    PosxInBlk = InvScanCoeffInBlk[idxW][idxH][ScanPosOffset][0]
-                    PosyInBlk = InvScanCoeffInBlk[idxW][idxH][ScanPosOffset][1]
-                    QuantCoeffMatrix[PosxInBlk][PosyInBlk] = (~AbsLevel) if coeff_sign else AbsLevel
-                    #QuantCoeffMatrix[PosxInBlk][PosyInBlk] = coeff_sign ? –AbsLevel : AbsLevel
-                    if (ScanPosOffset >= NumOfCoeff - 1):
-                        break
-                    coeff_last
-                    ScanPosOffset = ScanPosOffset + 1
-        elif ((component != 'COMPONENT_CHROMA' & i == 0) | (component =='COMPONENT_CHROMA' & i == 1)):
-            aec_ipcm_stuffing_bit
-            while (~byte_aligned()):
-                aec_byte_alignment_bit0
-        M1 = blockWidth / 2 if isChroma else blockWidth
-        M2 = blockHeight / 2 if isChroma else blockHeight
-        #M1 = isChroma ? blockWidth / 2 : blockWidth
-        #M2= isChroma ? blockHeight / 2 : blockHeight
-        xMin = Min(32, M1)
-        yMin = Min(32, M2)
-        for yStep in range(M2/yMin):
-            for xStep in range(M1/xMin):
-                for y in range(yMin):
-                    for x in range(xMin):
-                        pcm_coeff
-                        QuantCoeffMatrix[x+xStep*xMin][y + yStep*yMin] = pcm_coeff
-
-
-
-#自适应修正滤波参数定义
-
-class alf_parameter_set:
-    def __init__(seq_data):
-        if (PictureAlfEnableFlag[0] == 1):
-            alf_filter_num_minus1
-            for i in range(alf_filter_num_minus1+1):
-                if ((i > 0) & (alf_filter_num_minus1 != 15)):
-                    alf_region_distance[i]
-                for j in range(9):
-                    alf_coeff_luma[i][j]
-        if(PictureAlfEnableFlag[1] == 1):
-            for j in range(9):
-                alf_coeff_chroma[0][j]
-        if (PictureAlfEnableFlag[2] == 1):
-            for j in range(9):
-                alf_coeff_chroma[1][j]
-
-                
-
-
-
-
-
-#在位流中检测当前字节中剩下的位或在字节对齐时下一个字节是否是片结尾填充的二进制位，如
-#果是，则返回TRUE，否则返回FALSE。此函数不修改位流指针
-
-class is_stuffing_pattern:
-    def __init__(n):
-        if (next_bits(8-n) == (1<<(7-n))): # n=0～7，为位流指针在当前字节的位置偏移， n为0时位流指针指向当前字节最高位
-            return True
-        else:
-            return False
-
-
-#在位流中寻找下一个起始码，将位流指针指向起始码前缀的第一个二进制位。
-
-class next_start_code:
-    def __init__():
-        stuffing_bit #1
-    while (~ byte_aligned()):
-        stuffing_bit#0
-    while (next_bits(24) != '0000 0000 0000 0000 0000 0001'):#起始码前缀
-        stuffing_byte#00000000
 '''
