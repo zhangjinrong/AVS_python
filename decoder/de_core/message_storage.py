@@ -17,6 +17,13 @@ dict =  {
     'patch_start_code2':'0000000000000000000000010000007F',#00-7F is patch_start_code
     '8F': 'patch_end_code'
     }
+
+class ctxArray_cell:
+    def __init__(self):
+        self.mps = 0 #1
+        self.cycno = 0 #2
+        self.lgPmps = 1023 #11
+
 class video_sequence:
     def __init__(self,input_file):
         self.data_file = input_file
@@ -183,6 +190,16 @@ class sequence_header:
         self.lcu_qp_delta=0
         self.sao_merge_type_index=0
         self.MergeFlagExist=0
+
+
+        #CABAC
+        self.binIdx = -1
+        self.BypassFlag = 0
+        self.StuffingBitFlag = 0
+        self.ctxIdxStart = 0
+        self.ctxIdxInc = 0
+        self.ctxIdx = 0
+        self.ctx = ctxArray_cell()
 
     def picture_data(self):
         while((self.get_read_data(32) >= dict['patch_start_code1'])&(self.get_read_data(32) <= dict['patch_start_code2'])):#000001+0x00～0x7F(patch_index)
@@ -594,23 +611,130 @@ class sequence_header:
     def get_read_data(self,read_length):
         string = self.data_file[self.pointer_position:self.pointer_position+read_length]
         return string
+    
+    #CABAC
     def read_ae(self,str_type):
-        binIdx = -1
-        BypassFlag = 0
-        StuffingBitFlag = 0
+        self.binIdx = self.binIdx + 1
         if(str_type=='lcu_qp_delta'):
-            binIdx = binIdx + 1
-            BypassFlag = 0
-            StuffingBitFlag = 0
             if((binIdx==0)&(self.PreviousDeltaQP==0)):
-                ctxIdxInc = 0
+                self.ctxIdxInc = 0
             elif((binIdx==0)&(self.PreviousDeltaQP!=0)):
-                ctxIdxInc = 1
+                self.ctxIdxInc = 1
             elif(binIdx==1):
-                ctxIdxInc = 2
+                self.ctxIdxInc = 2
             else:
-                ctxIdxInc = 3
-        pass
+                self.ctxIdxInc = 3
+            self.ctxIdxStart = 0
+            self.ctxIdx = ctxIdxInc + ctxIdxStart
+            self.ctx = 
+            binVal = self.decode_decision()
+            return binVal
+        
+    def decode_aec_stuffing_bit(self):
+        ctx0.lgPmps=4
+        ctx0.mps=0
+        cFlag=0
+        return self.decode_decision()
+
+    def decode_bypass(self):
+        ctx.lgPmps = 1024
+        ctx.mps = 0
+        cFlag=0
+        return self.decode_decision()
+
+    def decode_decision(self):
+        if (CtxWeight == 0):
+            predMps = ctx.mps
+            lgPmps = ctx.lgPmps >> 2
+        else:
+            if(ctx.mps == ctxW.mps):
+                predMps = ctx.mps
+                lgPmps = ( ctx.lgPmps + ctxW.lgPmps ) >> 1
+            else:
+                if( ctx.lgPmps < ctxW.lgPmps):
+                    predMps = ctx.mps
+                    lgPmps = 1023 – ( ( ctxW.lgPmps - ctx.lgPmps ) >> 1 )
+                else:
+                    predMps = ctxW.mps
+                    lgPmps = 1023 – ( ( ctx.lgPmps – ctxW.lgPmps ) >> 1 )
+            lgPmps = lgPmps >> 2
+        if (valueD | (bFlag == 1 & rS1 == boundS) ):
+            rS1 = 0
+            valueS = 0
+            while ( valueT < 0x100 & valueS < boundS ):
+                valueS = valueS + 1
+                valueT = (valueT << 1) | read_bits(1)
+            if ( valueT < 0x100 ):
+                bFlag = 1
+            else:
+                bFlag = 0
+            valueT = valueT & 0xFF
+        if( rT1 >= lgPmps ):
+            rS2 = rS1
+            rT2 = rT1 - lgPmps
+            sFlag = 0
+        else:
+            rS2 = rS1 + 1
+            rT2 = 256 + rT1 - lgPmps
+            sFlag = 1
+        if ( ( rS2 > valueS | (rS2 == valueS & valueT >= rT2) ) & bFlag == 0 ):
+            binVal = ! predMps
+            if ( sFlag == 0 ):
+                tRlps = lgPmps
+            else:
+                tRlps = rT1 + lgPmps
+            if ( rS2 == valueS ):
+                valueT = valueT - rT2
+            else:
+                valueT = 256 + ((valueT << 1 ) | read_bits(1)) - rT2
+            while ( tRlps < 0x100 ):
+                tRlps = tRlps << 1
+                valueT = (valueT << 1 ) | read_bits(1)
+            rT1 = tRlps & 0xFF
+            valueD = 1
+        else:
+            binVal = predMps
+            rS1 = rS2
+            rT1 = rT2
+            valueD = 0
+        if(cFlag):  
+            if ( CtxWeight == 0 ) :
+                ctx = self.update_ctx( binVal, ctx )
+
+            else:
+                ctx = self.update_ctx( binVal, ctx )
+                ctxW = self.update_ctx( binVal, ctxW )
+        return (binVal)
+
+    def update_ctx(self,binVal,ctx):
+        if (ctx.cycno <= 1 ):
+            cwr = 3
+        elif ( ctx.cycno == 2 ):
+            cwr = 4
+        else:
+            cwr = 5
+        if ( binVal != ctx.mps ):
+            if ( ctx.cycno <= 2 ):
+                ctx.cycno = ctx.cycno + 1
+            else:
+                ctx.cycno = 3
+        elif ( ctx.cycno == 0):
+            ctx.cycno = 1
+        if ( binVal == ctx.mps ):
+            ctx.lgPmps = ctx.lgPmps – (ctx.lgPmps >> cwr) - (ctx.lgPmps >> (cwr+2))
+        else :
+            if ( cwr == 3 ):
+                ctx.lgPmps = ctx.lgPmps + 197
+            elif ( cwr == 4 ):
+                ctx.lgPmps = ctx.lgPmps + 95
+            else:
+                ctx.lgPmps = ctx.lgPmps + 46
+            if ( ctx.lgPmps > 1023 ) :
+                ctx.lgPmps = 2047 - ctx.lgPmps
+        return ctx
+
+
+
     def read_ue(self):
         string_size=1
         while(self.get_read_data(1)=='0'):
@@ -647,7 +771,7 @@ class sequence_header:
         data_value = self.str_to_hex(self.pop_read_data(len_data))
         print(str_value,'  ',data_value)
         return data_value
-
+    
     #编码树定义
     def coding_unit_tree(self,x0, y0, split, width, height, qt, mode,seq_data):
         isBoundary = ((x0+width) > PicWidthInLuma) | ((y0+height) > PicHeightInLuma)
@@ -1065,6 +1189,8 @@ class sequence_header:
             self.stuffing_bit=self.assign_data('stuffing_bit',1)#0
         while (self.get_read_data(24) != '000000000000000000000001'):#起始码前缀
             self.stuffing_byte=self.assign_data('stuffing_byte',8)#0#00000000
+
+
 
 '''
 
