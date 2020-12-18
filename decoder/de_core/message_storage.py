@@ -20,8 +20,8 @@ dict =  {
 
 class ctxArray_cell:
     def __init__(self):
-        self.mps = 0 #1
-        self.cycno = 0 #2
+        self.mps = 0 #1bit   Least Probable Symbol 0/1 CP
+        self.cycno = 0 #2    
         self.lgPmps = 1023 #11
 
 class video_sequence:
@@ -190,16 +190,31 @@ class sequence_header:
         self.lcu_qp_delta=0
         self.sao_merge_type_index=0
         self.MergeFlagExist=0
+        self.SaoMergeUpAvai=0
+        self.SaoMergeLeftAvai=0
 
 
-        #CABAC
+        #CABAC熵编码解码器
         self.binIdx = -1
+        self.rS1 = 0 #如果boundS==254,位宽为8位
+        self.rT1 = 0xFF
+        self.bFlag = 0 #0或1
+        self.cFlag = 0 #0或1
+        self.valueS = 0#位宽是大于或等于Log(boundS+1)的最小整数,如果boundS==254,位宽为8位
+        self.boundS = 0#位宽是大于或等于Log(boundS+1)的最小整数(记录连续0的数量)
+        self.valueT = 0#位宽是9位 read_bits(9)
+        self.valueD = 1
+
+
         self.BypassFlag = 0
         self.StuffingBitFlag = 0
         self.ctxIdxStart = 0
         self.ctxIdxInc = 0
         self.ctxIdx = 0
+        self.ctxIdxW = 0
         self.ctx = ctxArray_cell()
+        self.ctxW = ctxArray_cell()
+        self.CtxWeight = 0
 
     def picture_data(self):
         while((self.get_read_data(32) >= dict['patch_start_code1'])&(self.get_read_data(32) <= dict['patch_start_code2'])):#000001+0x00～0x7F(patch_index)
@@ -225,15 +240,15 @@ class sequence_header:
                 self.PreviousDeltaQP = lcu_qp_delta
             if (self.sample_adaptive_offset_enable_flag=='1'):
                 if ((self.patch_sao_enable_flag[0]=='1') | (self.patch_sao_enable_flag[1]=='1') | (self.patch_sao_enable_flag[2]=='1')):
-                    if('如果当前样本的样值偏移补偿单元E的上边样值偏移补偿单元U存在， 且与E对应的最大编码单元和U对应的最大编码单元处于同一片'):
-                        SaoMergeUpAvai=1
-                    else:
-                        SaoMergeUpAvai=0
-                    if('如果当前样本的样值偏移补偿单元E的左边样值偏移补偿单元L存在， 且与E对应的最大编码单元和L对应的最大编码单元处于同一片'):
-                        SaoMergeLeftAvai=1
-                    else:
-                        SaoMergeLeftAvai=0
-                    if(SaoMergeUpAvai|SaoMergeLeftAvai):
+                    #if('如果当前样本的样值偏移补偿单元E的上边样值偏移补偿单元U存在， 且与E对应的最大编码单元和U对应的最大编码单元处于同一片'):
+                    #    self.SaoMergeUpAvai=1
+                    #else:
+                    #    self.SaoMergeUpAvai=0
+                    #if('如果当前样本的样值偏移补偿单元E的左边样值偏移补偿单元L存在， 且与E对应的最大编码单元和L对应的最大编码单元处于同一片'):
+                    #    self.SaoMergeLeftAvai=1
+                    #else:
+                    #    self.SaoMergeLeftAvai=0
+                    if(self.SaoMergeUpAvai|self.SaoMergeLeftAvai):
                         MergeFlagExist = 1
                     else:
                         MergeFlagExist = 0
@@ -274,18 +289,17 @@ class sequence_header:
             return 'SAO_Edge'
 
     def get_SaoMergeMode(self):
-        if((SaoMergeTypeIndex==1)&(SaoMergeLeftAvai==1)&(SaoMergeUpAvai==0)):
+        if((SaoMergeTypeIndex==1)&(self.SaoMergeLeftAvai==1)&(self.SaoMergeUpAvai==0)):
             SaoMergeMode = 'SAO_MERGE_LEFT'
-        elif((SaoMergeTypeIndex==1)&(SaoMergeLeftAvai==0)&(SaoMergeUpAvai==1)):
+        elif((SaoMergeTypeIndex==1)&(self.SaoMergeLeftAvai==0)&(self.SaoMergeUpAvai==1)):
             SaoMergeMode = 'SAO_MERGE_UP'
-        elif((SaoMergeTypeIndex==1)&(SaoMergeLeftAvai==1)&(SaoMergeUpAvai==1)):
+        elif((SaoMergeTypeIndex==1)&(self.SaoMergeLeftAvai==1)&(self.SaoMergeUpAvai==1)):
             SaoMergeMode = 'SAO_MERGE_LEFT'
-        elif((SaoMergeTypeIndex==2)&(SaoMergeLeftAvai==1)&(SaoMergeUpAvai==1)):
+        elif((SaoMergeTypeIndex==2)&(self.SaoMergeLeftAvai==1)&(self.SaoMergeUpAvai==1)):
             SaoMergeMode = 'SAO_MERGE_UP'
         else:
             SaoMergeMode = 'SAO_NON_MERGE'
         return SaoMergeMode
-
 
     #在位流中检测是否已达到片的结尾，如果已到达片的结尾，返回TRUE，否则返回FALSE
     def is_end_of_patch(self):
@@ -595,7 +609,6 @@ class sequence_header:
                         self.WeightQuantMatrix8x8[i][j] = weight_quant_coeff
         print('out func weight_quant_matrix')
     
-    
     def is_stuffing_pattern(self):
         n = self.pointer_position%8
         if (self.str_to_int(self.get_read_data(8-n)) == (1<<(7-n))): # n=0～7，为位流指针在当前字节的位置偏移， n为0时位流指针指向当前字节最高位
@@ -614,21 +627,62 @@ class sequence_header:
     
     #CABAC
     def read_ae(self,str_type):
-        self.binIdx = self.binIdx + 1
-        if(str_type=='lcu_qp_delta'):
-            if((binIdx==0)&(self.PreviousDeltaQP==0)):
+        self.binIdx = -1
+        result_data = ''
+        while(~self.flag_anti_bin_method(result_data,str_type)):
+            self.binIdx = self.binIdx + 1
+
+            if((str_type=='sao_mode')&(self.binIdx!=0)):
+                self.BypassFlag = 1
                 self.ctxIdxInc = 0
-            elif((binIdx==0)&(self.PreviousDeltaQP!=0)):
-                self.ctxIdxInc = 1
-            elif(binIdx==1):
-                self.ctxIdxInc = 2
+                binVal = self.decode_decision()
+                result_data = result_data + str(binVal)
+            if(str_type=='lcu_qp_delta'):
+                self.BypassFlag = 0
+                self.StuffingBitFlag = 0
+                if((binIdx==0)&(self.PreviousDeltaQP==0)):
+                    self.ctxIdxInc = 0
+                elif((binIdx==0)&(self.PreviousDeltaQP!=0)):
+                    self.ctxIdxInc = 1
+                elif(binIdx==1):
+                    self.ctxIdxInc = 2
+                else:
+                    self.ctxIdxInc = 3
+                self.ctxIdxStart = 0
+                self.ctxIdx = ctxIdxInc + ctxIdxStart
+                self.cFlag = 0
+                #self.ctx = 
+                binVal = self.decode_decision()
+                result_data = result_data + str(binVal)
+        
+        return self.match_anti_bin_method(result_data,str_type)
+    
+    #判断是否满足反二值化
+    def flag_anti_bin_method(self,result_data,str_type):
+        if(str_type=='lcu_qp_delta'):
+            if(result_data[-1]=='1'):
+                return True
             else:
-                self.ctxIdxInc = 3
-            self.ctxIdxStart = 0
-            self.ctxIdx = ctxIdxInc + ctxIdxStart
-            self.ctx = 
-            binVal = self.decode_decision()
-            return binVal
+                return False
+        if(str_type=='sao_mode'):
+            if(result_data[-1]=='1'):
+                return True
+            else:
+                return False
+
+
+    #解析反二值化
+    def match_anti_bin_method(self,result_data,str_type):
+        if(str_type=='lcu_qp_delta'):
+            synElVal = len(result_data)-1
+            if(synElVal%2==0):
+                cu_qp_delta = -(synElVal / 2)
+            else:
+                cu_qp_delta = (synElVal / 2)
+            return cu_qp_delta
+        if(str_type=='sao_mode'):
+            synElVal = len(result_data)-1
+            return synElVal
         
     def decode_aec_stuffing_bit(self):
         ctx0.lgPmps=4
@@ -643,47 +697,47 @@ class sequence_header:
         return self.decode_decision()
 
     def decode_decision(self):
-        if (CtxWeight == 0):
-            predMps = ctx.mps
-            lgPmps = ctx.lgPmps >> 2
+        if (self.CtxWeight == 0):
+            predMps = self.ctx.mps
+            lgPmps = self.ctx.lgPmps >> 2
         else:
-            if(ctx.mps == ctxW.mps):
-                predMps = ctx.mps
-                lgPmps = ( ctx.lgPmps + ctxW.lgPmps ) >> 1
+            if(self.ctx.mps == self.ctxW.mps):
+                predMps = self.ctx.mps
+                lgPmps = ( self.ctx.lgPmps + self.ctxW.lgPmps ) >> 1
             else:
-                if( ctx.lgPmps < ctxW.lgPmps):
-                    predMps = ctx.mps
-                    lgPmps = 1023 – ( ( ctxW.lgPmps - ctx.lgPmps ) >> 1 )
+                if(self.ctx.lgPmps < self.ctxW.lgPmps):
+                    predMps = self.ctx.mps
+                    lgPmps = 1023 – ((self.ctxW.lgPmps - self.ctx.lgPmps ) >> 1 )
                 else:
-                    predMps = ctxW.mps
-                    lgPmps = 1023 – ( ( ctx.lgPmps – ctxW.lgPmps ) >> 1 )
+                    predMps = self.ctxW.mps
+                    lgPmps = 1023 – ((self.ctx.lgPmps – self.ctxW.lgPmps ) >> 1 )
             lgPmps = lgPmps >> 2
-        if (valueD | (bFlag == 1 & rS1 == boundS) ):
-            rS1 = 0
-            valueS = 0
-            while ( valueT < 0x100 & valueS < boundS ):
-                valueS = valueS + 1
-                valueT = (valueT << 1) | read_bits(1)
-            if ( valueT < 0x100 ):
-                bFlag = 1
+        if (self.valueD | (self.bFlag == 1 & self.rS1 == self.boundS) ):
+            self.rS1 = 0
+            self.valueS = 0
+            while (self.valueT < 0x100 & self.valueS < self.boundS ):
+                self.valueS = self.valueS + 1
+                self.valueT = (self.valueT << 1) | self.pop_read_data(1)#read_bits(1)
+            if ( self.valueT < 0x100 ):
+                self.bFlag = 1
             else:
-                bFlag = 0
-            valueT = valueT & 0xFF
-        if( rT1 >= lgPmps ):
-            rS2 = rS1
-            rT2 = rT1 - lgPmps
+                self.bFlag = 0
+            self.valueT = self.valueT & 0xFF
+        if( self.rT1 >= lgPmps ):
+            self.rS2 = self.rS1
+            self.rT2 = self.rT1 - lgPmps
             sFlag = 0
         else:
-            rS2 = rS1 + 1
-            rT2 = 256 + rT1 - lgPmps
+            self.rS2 = self.rS1 + 1
+            self.rT2 = 256 + self.rT1 - lgPmps
             sFlag = 1
-        if ( ( rS2 > valueS | (rS2 == valueS & valueT >= rT2) ) & bFlag == 0 ):
+        if (( self.rS2 > self.valueS | (self.rS2 == self.valueS & self.valueT >= self.rT2)) & self.bFlag == 0 ):
             binVal = ! predMps
             if ( sFlag == 0 ):
                 tRlps = lgPmps
             else:
                 tRlps = rT1 + lgPmps
-            if ( rS2 == valueS ):
+            if ( self.rS2 == self.valueS ):
                 valueT = valueT - rT2
             else:
                 valueT = 256 + ((valueT << 1 ) | read_bits(1)) - rT2
@@ -694,17 +748,16 @@ class sequence_header:
             valueD = 1
         else:
             binVal = predMps
-            rS1 = rS2
-            rT1 = rT2
+            self.rS1 = self.rS2
+            self.rT1 = self.rT2
             valueD = 0
-        if(cFlag):  
-            if ( CtxWeight == 0 ) :
-                ctx = self.update_ctx( binVal, ctx )
-
+        if(self.cFlag):  
+            if (self.CtxWeight == 0 ) :
+                self.ctx = self.update_ctx( self.binVal, self.ctx )
             else:
-                ctx = self.update_ctx( binVal, ctx )
-                ctxW = self.update_ctx( binVal, ctxW )
-        return (binVal)
+                self.ctx = self.update_ctx( self.binVal, self.ctx )
+                self.ctxW = self.update_ctx( self.binVal, self.ctxW )
+        return (self.binVal)
 
     def update_ctx(self,binVal,ctx):
         if (ctx.cycno <= 1 ):
@@ -732,8 +785,6 @@ class sequence_header:
             if ( ctx.lgPmps > 1023 ) :
                 ctx.lgPmps = 2047 - ctx.lgPmps
         return ctx
-
-
 
     def read_ue(self):
         string_size=1
@@ -922,7 +973,7 @@ class sequence_header:
                 IsChroma = 0
                 if (i == NumOfTransBlocks -1 | i == NumOfTransBlocks -2):
                     IsChroma = 1
-                block(i, width, height, CuCtp, IsChroma, IsPcmMode[i], component)
+                self.block(i, width, height, CuCtp, IsChroma, IsPcmMode[i], component)
         else:
             if (PictureType != 0):
                 if (mode != 'PRED_Intra_Only'):
