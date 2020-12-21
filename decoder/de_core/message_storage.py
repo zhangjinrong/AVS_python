@@ -188,10 +188,69 @@ class sequence_header:
         #片定义
         self.PreviousDeltaQP=0
         self.lcu_qp_delta=0
-        self.sao_merge_type_index=0
+        self.sao_merge_type_index=0#样值偏移补偿合并方式索引
         self.MergeFlagExist=0
         self.SaoMergeUpAvai=0
         self.SaoMergeLeftAvai=0
+        self.sao_interval_offset_sign = 0#样值偏移补偿区间模式偏移值符号值
+        self.sao_edge_offset =0#样值偏移补偿边缘模式偏移值
+        self.sao_interval_start_pos = 0#样值偏移补偿区间模式起始偏移子区间位置
+        self.sao_interval_delta_pos_minus2 = 0#样值偏移补偿区间模式起始偏移子区间位置差
+        self.sao_edge_type = 0#样值偏移补偿边缘模式类型
+        self.alf_lcu_enable_flag = 0#最大编码单元自适应修正滤波允许标志
+        self.aec_lcu_stuffing_bit = 0#熵编码最大编码单元填充位
+        self.qt_split_flag=0 #四叉树划分标志
+        self.bet_split_flag = 0#二叉树扩展四叉树划分标志
+        self.bet_split_type_flag=0#二叉树扩展四叉树划分类型标志
+        self.bet_split_dir_flag=0#二叉树扩展四叉树划分方向标志
+        self.root_cu_mode = 0#编码单元预测模式
+        self.intra_chroma_pred_mode=0#帧内色度预测模式
+        self.ctp_u = 0#Cb变换块编码模板
+        self.ctp_v = 0#Cr变换块编码模板
+        self.skip_flag = 0#跳过模式标志
+        self.umve_flag = 0#高级运动矢量表达模式
+        self.direct_flag = 0#直接模式标志
+        self.affine_flag = 0#仿射模式标志
+        self.intra_cu_flag = 0#帧内编码单元标志
+        self.dt_split_flag = 0#衍生模式划分标志
+        self.dt_split_dir = 0#衍生模式划分方向
+        self.dt_split_hqt_flag = 0#水平四叉衍生模式划分标志
+        self.dt_split_hadt_flag=0#水平非对称衍生模式标志
+        self.dt_split_vqt_flag = 0#垂直四叉衍生模式划分标志
+        self.dt_split_vadt_flag=0#垂直非对称衍生模式标志
+        self.umve_mv_idx = 0#基础运动矢量索引
+        self.umve_step_idx = 0#运动矢量偏移量索引
+        self.umve_dir_idx = 0#运动矢量方向索引
+        self.cu_affine_cand_idx=0#仿射运动矢量索引
+        self.cu_subtype_index=0#编码单元子类型索引
+        self.extend_mvr_flag=0#运动矢量精度扩展模式标识
+        self.affine_amvr_index=0#仿射自适应运动矢量精度索引
+        self.amvr_index=0#自适应运动矢量精度索引
+        self.inter_pred_ref_mode=0#预测参考模式
+        self.smvd_flag=0#对称运动矢量差标志
+        self.pu_reference_index_l0=0#L0预测单元参考索引
+        self.mv_diff_x_abs_l0=0#L0运动矢量水平分量差绝对值
+        self.mv_diff_x_abs_l1=0#L1运动矢量水平分量差绝对值
+        self.mv_diff_y_abs_l0=0#L0运动矢量垂直分量差绝对值
+        self.mv_diff_y_abs_l1=0#L1运动矢量垂直分量差绝对值
+        self.mv_diff_x_sign_l0=0#L0运动矢量水平分量差符号值
+        self.mv_diff_y_sign_l0=0#L0运动矢量垂直分量差符号值
+        self.mv_diff_x_sign_l1=0#L1运动矢量水平分量差符号值
+        self.mv_diff_y_sign_l1=0#L1运动矢量垂直分量差符号值
+        self.mv_diff_x_abs_l0_affine=0#仿射帧间模式L0运动矢量水平分量差绝对值(找不到解码方法)
+        self.mv_diff_y_abs_l0_affine=0#仿射帧间模式L0运动矢量垂直分量差绝对值(找不到解码方法)
+        self.mv_diff_x_abs_l1_affine=0#仿射帧间模式L1运动矢量水平分量差绝对值(找不到解码方法)
+        self.mv_diff_y_abs_l1_affine=0#仿射帧间模式L1运动矢量垂直分量差绝对值(找不到解码方法)
+        self.mv_diff_x_sign_l0_affine=0#仿射帧间模式L0运动矢量水平分量差符号值(找不到解码方法)
+        self.mv_diff_y_sign_l0_affine=0#仿射帧间模式L0运动矢量垂直分量差符号值(找不到解码方法)
+        self.mv_diff_x_sign_l1_affine=0#仿射帧间模式L1运动矢量水平分量差符号值(找不到解码方法)
+        self.mv_diff_y_sign_l1_affine=0#仿射帧间模式L1运动矢量垂直分量差符号值(找不到解码方法)
+        self.pu_reference_index_l0=0#L0预测单元参考索引
+        self.pu_reference_index_l1=0#L1预测单元参考索引
+        self.intra_luma_pred_mode=0#帧内亮度预测模式
+        self.intra_chroma_pred_mode=0#帧内色度预测模式
+        self.ipf_flag=0#帧内预测滤波标志
+
 
 
         #CABAC熵编码解码器
@@ -261,25 +320,503 @@ class sequence_header:
                                 self.SaoMode[compIdx] = self.get_SaoMode(self.sao_mode[compIdx])
                                 if (self.SaoMode[compIdx] == 'SAO_Interval'):
                                     for j in range(MaxOffsetNumber):
-                                        self.sao_interval_offset_abs[compIdx][j] = self.read_ae()
+                                        self.sao_interval_offset_abs[compIdx][j] = self.read_ae('sao_interval_offset_abs')
                                         if (self.sao_interval_offset_abs[compIdx][j]):
-                                            self.sao_interval_offset_sign[compIdx][j] = self.read_ae()
-                                    self.sao_interval_start_pos[compIdx] = self.read_ae()
-                                    self.sao_interval_delta_pos_minus2[compIdx] = self.read_ae()
+                                            self.sao_interval_offset_sign[compIdx][j] = self.read_ae('sao_interval_offset_sign')
+                                    self.sao_interval_start_pos[compIdx] = self.read_ae('sao_interval_start_pos')
+                                    self.sao_interval_delta_pos_minus2[compIdx] = self.read_ae('sao_interval_delta_pos_minus2')
                                 if (self.SaoMode[compIdx] == 'SAO_Edge'):
                                     for j in range(MaxOffsetNumber):
-                                        self.sao_edge_offset[compIdx][j] = self.read_ae()
-                                    self.sao_edge_type[compIdx] = self.read_ae()
+                                        self.sao_edge_offset[compIdx][j] = self.read_ae('sao_edge_offset')
+                                    self.sao_edge_type[compIdx] = self.read_ae('sao_edge_type')
             for compIdx in range(3):
                 if (self.picture_alf_enable_flag[compIdx] == '1'):
-                    self.alf_lcu_enable_flag[compIdx][LcuIndex] = self.read_ae()
+                    self.alf_lcu_enable_flag[compIdx][LcuIndex] = self.read_ae('alf_lcu_enable_flag')
             x0 = (LcuIndex % pictureWidthInLcu) * LcuSize
             y0 = (LcuIndex / pictureWidthInLcu) * LcuSize
             self.coding_unit_tree(x0, y0, 0, 1<<LcuSizeInBit, 1<<LcuSizeInBit, 1, 'PRED_No_Constraint')
-            self.aec_lcu_stuffing_bit = self.read_ae()
+            self.aec_lcu_stuffing_bit = self.read_ae('aec_lcu_stuffing_bit')
         next_start_code()
         patch_end_code
     
+    #CABAC
+    def read_ae(self,str_type):
+        self.binIdx = -1
+        result_data = ''
+        while(~self.flag_anti_bin_method(result_data,str_type)):
+            self.binIdx = self.binIdx + 1
+            
+            if(str_type=='ipf_flag'):
+                ctxIdxInc =0
+            if(str_type=='intra_chroma_pred_mode'):
+                if(self.binIdx ==0):
+                    ctxIdxInc =0
+                elif((self.tscpm_enable_flag==1)&(self.binIdx==1)):
+                    ctxIdxInc =2
+                else:
+                    ctxIdxInc =1
+            if(str_type=='intra_luma_pred_mode'):
+                if((self.binIdx==1)&(self.result_data='1')):
+                    ctxIdxInc =6
+                else:
+                    ctxIdxInc =len(self.result_data)
+            if(str_type==('pu_reference_index_l1'|'pu_reference_index_l0')):
+                if(self.binIdx==0):
+                    ctxIdxInc =0
+                elif(self.binIdx==1):
+                    ctxIdxInc =1
+                else:
+                    ctxIdxInc =2             
+
+            if(str_type==('mv_diff_x_sign_l0_affine'|'mv_diff_y_sign_l0_affine'|'mv_diff_x_sign_l1_affine'|'mv_diff_y_sign_l1_affine')):
+
+            if(str_type==('mv_diff_x_sign_l0'|'mv_diff_x_sign_l1'|'mv_diff_y_sign_l0'|'mv_diff_y_sign_l1')):
+                self.BypassFlag=1
+            if(str_type=='mv_diff_x_abs_l0'|'mv_diff_x_abs_l1'|'mv_diff_y_abs_l0'|'mv_diff_y_abs_l1'):
+                if(self.binIdx==0):
+                    ctxIdxInc =0
+                elif(self.binIdx==1):
+                    ctxIdxInc =1
+                elif(self.binIdx==2):
+                    ctxIdxInc =2
+                else:
+                    BypassFlag=1             
+            if(str_type=='pu_reference_index_l0'):
+                if(self.binIdx==0):
+                    ctxIdxInc =0
+                elif(self.binIdx==1):
+                    ctxIdxInc =1
+                else:
+                    ctxIdxInc =2
+            if(str_type=='smvd_flag'):
+                ctxIdxInc =0
+            if(str_type=='inter_pred_ref_mode'):
+                if((self.binIdx==0)&(width*height<64)):
+                    ctxIdxInc =2
+                elif((self.binIdx==0)&(width*height>=64)):
+                    ctxIdxInc =0
+                else:
+                    ctxIdxInc =1
+
+            if(str_type=='amvr_index'):
+                ctxIdxInc = self.binIdx
+            if(str_type=='affine_amvr_index'):
+                ctxIdxInc = self.binIdx
+            if(str_type=='extend_mvr_flag'):
+                ctxIdxInc = 0
+            if(str_type=='cu_subtype_index'):
+                ctxIdxInc = self.binIdx
+            if(str_type=='cu_affine_cand_idx'):
+                ctxIdxInc = self.binIdx
+            if(str_type=='umve_dir_idx'):
+                ctxIdxInc = self.binIdx
+            if(str_type=='umve_step_idx'):
+                self.BypassFlag  = 1
+                ctxIdxInc = 0
+            if(str_type=='umve_mv_idx'):
+                self.BypassFlag  = 1
+                ctxIdxInc = 0
+            if(str_type==('dt_split_hadt_flag'|'dt_split_vadt_flag'|'dt_split_hqt_flag'|'dt_split_vqt_flag')):
+                ctxIdxInc = 0
+            if(str_type=='dt_split_dir'):
+                ctxIdxInc = 0
+            if(str_type=='dt_split_flag'):
+                ctxIdxInc = 0
+            if(str_type=='intra_cu_flag'):
+                if()#一大堆呢
+            if(str_type=='affine_flag'):
+                ctxIdxInc = 0
+            if(str_type=='direct_flag'):
+                if(如果当前预测块 E 的宽度乘以当前预测块 E 的高度的积小于 64，或当前预测块 E 的宽度大于64， 或当前预测块 E 的高度大于 64):
+                    ctxIdxInc = 1
+                else:
+                    ctxIdxInc = 0
+
+            if(str_type=='umve_flag'):
+                ctxIdxInc = 0
+            if(str_type=='skip_flag'):
+                if(如果当前预测块 E 的宽度乘以当前预测块 E 的高度的积小于 64):
+                    ctxIdxInc = 3
+                elif(如果当前预测块 E 的左边预测块 A“存在”且 A 是跳过模式，且当前预测块 E 的上边预测块 B“存在”且 B 是跳过模式):
+                    ctxIdxInc = 2
+                elif(如果当前预测块 E 的左边预测块 A“存在”且 A 是跳过模式，或当前预测块 E 的上边预测块 B“存在”且 B 是跳过模式):
+                    ctxIdxInc = 1
+                else:
+                    ctxIdxInc = 0
+            if(str_type==('ctp_u'|'ctp_v')):
+                ctxIdxInc = 0
+            if(str_type=='intra_chroma_pred_mode'):
+                if(self.binIdx==0):
+                    ctxIdxInc = 0
+                elif((self.tscpm_enable_flag==1)&(self.binIdx==1)):
+                    ctxIdxInc = 2
+                else:
+                    ctxIdxInc = 1
+            if(str_type=='root_cu_mode'):
+                ctxIdxInc = 0
+            if(str_type=='bet_split_dir_flag'):#没有bet_split_dir_flag的反二值法，未完成
+                if((width==128)&(height==64)):#E是当前亮度编码块
+                    ctxIdxInc = 4
+                elif((width==64)&(height==128)):
+                    ctxIdxInc = 3
+                elif(height>width):
+                    ctxIdxInc = 2
+                elif(width>height):
+                    ctxIdxInc = 1
+                else:
+                    ctxIdxInc = 0
+            if(str_type=='bet_split_type_flag'):
+                if(A'存在'且 A 的高度小于 E 的高度，且 B'存在'且 B 的宽度小于 E 的宽度):
+                    ctxIdxInc=2
+                elif(A'存在'且 A 的高度小于 E 的高度，或 B'存在'且 B 的宽度小于 E 的宽度):
+                    ctxIdxInc=1
+                else:
+                    ctxIdxInc=0
+            if(str_type=='bet_split_flag'):
+                if(如果 A'存在'且 A 的高度小于 E 的高度，且 B'存在'且 B 的宽度小于 E 的宽度):
+                    self.ctxIdxInc = 2
+                elif(如果 A'存在'且 A 的高度小于 E 的高度，或块 B'存在'且块 B 的宽度小于 E 的宽度):
+                    self.ctxIdxInc = 1
+                else:
+                    self.ctxIdxInc = 0
+                if(E 的宽度乘以 E 的高度的积大于 1024):
+                    self.ctxIdxInc =self.ctxIdxInc
+                elif(如果 E 的宽度乘以 E 的高度的积大于 256):
+                    self.ctxIdxInc = self.ctxIdxInc+3
+                else:
+                    self.ctxIdxInc = self.ctxIdxInc+6
+                
+
+            if(str_type=='qt_split_flag'):
+                if(如果当前图像为帧内预测图像且 E 的宽度为 128):
+                    self.ctxIdxInc = 3
+                elif(如果 A'存在'且 A 的高度小于 E 的高度，且 B'存在'且 B 的宽度小于 E 的宽度):
+                    self.ctxIdxInc = 2
+                elif(如果 A'存在'且 A 的高度小于 E 的高度，或 B'存在'且 B 的宽度小于 E 的宽度):
+                    self.ctxIdxInc = 1
+                else:
+                    self.ctxIdxInc = 0
+                
+            if(str_type=='sao_interval_offset_sign'):
+                self.BypassFlag = 1
+            if(str_type=='sao_interval_offset_abs')&(self.binIdx!=0)):
+                self.BypassFlag = 1
+                self.ctxIdxInc = 0
+            if(str_type=='sao_mode')&(self.binIdx!=0)):
+                self.BypassFlag = 1
+                self.ctxIdxInc = 0
+            if(str_type=='sao_edge_offset'):
+                self.BypassFlag = 1
+            if(str_type=='sao_interval_start_pos'):
+                self.BypassFlag = 1
+            if(str_type=='sao_interval_delta_pos_minus2'):
+                self.BypassFlag = 1           
+            if(str_type=='sao_edge_type'):
+                self.BypassFlag = 1      
+            if((str_type=='mv_diff_x_sign')|(str_type=='mv_diff_y_sign')):
+                self.BypassFlag = 1 
+            if(((str_type=='mv_diff_x_abs ')|(str_type=='mv_diff_y_abs'))&( binIdx>=3)):
+                self.BypassFlag = 1 
+            if(str_type=='coeff_sign'):
+                self.BypassFlag = 1   
+            if((str_type=='coeff_run')&(binIdx>=16)):
+                self.BypassFlag = 1   
+            if((str_type=='umve_mv_idx')&(binIdx!=0)):
+                self.BypassFlag = 1  
+            if((str_type=='umve_step_idx')&(binIdx!=0)):
+                self.BypassFlag = 1    
+            if((str_type=='coeff_level_minus1')&(binIdx>=8)):
+                self.BypassFlag = 1     
+            if(str_type=='aec_lcu_stuffing_bit'):
+                self.BypassFlag = 0
+                self.StuffingBitFlag = 1
+            if(str_type=='aec_ipcm_stuffing_bit'):
+                self.BypassFlag = 0
+                self.StuffingBitFlag = 1
+            if(str_type=='coeff_last'):
+                self.CtxWeight = 1
+            else:
+                self.CtxWeight = 0
+            if(str_type=='alf_lcu_enable_flag'):
+                self.ctxIdxInc =0
+            if((str_type=='sao_merge_type_index')&(self.binIdx!=0)):
+                self.ctxIdxInc = self.binIdxIdx+self.SaoMergeLeftAvai+self.SaoMergeUpAvai-1
+            if(str_type=='lcu_qp_delta'):
+                self.BypassFlag = 0
+                self.StuffingBitFlag = 0
+                if((binIdx==0)&(self.PreviousDeltaQP==0)):
+                    self.ctxIdxInc = 0
+                elif((binIdx==0)&(self.PreviousDeltaQP!=0)):
+                    self.ctxIdxInc = 1
+                elif(binIdx==1):
+                    self.ctxIdxInc = 2
+                else:
+                    self.ctxIdxInc = 3
+                self.ctxIdxStart = 0
+                self.ctxIdx = ctxIdxInc + ctxIdxStart
+                self.cFlag = 0
+                #self.ctx = 
+            binVal = self.decode_decision()
+            result_data = result_data + str(binVal)
+    
+    #判断是否满足反二值化
+    def flag_anti_bin_method(self,result_data,str_type):
+        flag = False
+        if(str_type=='ipf_flag'):
+            flag = True
+            synElVal=self.str_to_int(result_data)
+        if(str_type=='intra_chroma_pred_mode'):
+            flag = True
+            maxVal=(TscpmEnableFlag ? 5 : 4) 
+            if(result_data[-1]=='1'):
+                synElVal =len(result_data)-1
+        if(str_type=='intra_luma_pred_mode'):
+            flag = True
+            if(result_data=='10'):
+                synElVal = 0
+            elif(result_data=='11'):
+                synElVal = 1
+            elif(len(result_data)==6):
+                synElVal = 2+result_data[1]*16+result_data[2]*8+result_data[3]*4+result_data[4]*2+result_data[5]
+            else:
+                flag = False
+        if(str_type==('pu_reference_index_l1')):
+            maxVal=NumRefActive[1]-1
+            synElVal = self.str_to_int(len(result_data))
+        if(str_type==('pu_reference_index_l0')):
+            maxVal=NumRefActive[0]-1
+            synElVal = self.str_to_int(len(result_data))
+        if(str_type==('mv_diff_x_sign_l0'|'mv_diff_x_sign_l1'|'mv_diff_y_sign_l0'|'mv_diff_y_sign_l1')):
+            flag = True
+            synElVal = self.str_to_int(len(result_data))
+        if(str_type==('mv_diff_x_abs_l0'|'mv_diff_x_abs_l1'|'mv_diff_y_abs_l0'|'mv_diff_y_abs_l1')):
+            flag = True
+            if(result_data=='0'):
+                synElVal = 0
+            elif(result_data=='10'):
+                synElVal = 1
+            elif(result_data=='110'):
+                synElVal = 2
+            elif(result_data[0:3]=='1110'):
+                synElVal = self.read_ue() + 3
+            elif(result_data[0:3]=='1111'):
+                synElVal = self.read_ue() + 4
+            else:
+                flag = False
+        if(str_type=='pu_reference_index_l0'):
+            if(len(result_data)==NumRefActive[0]-1):
+                flag = True
+                synElVal = self.str_to_int(len(result_data))
+
+        if(str_type=='smvd_flag'):
+            flag = True
+            synElVal = self.str_to_int(result_data)
+        if(str_type=='inter_pred_ref_mode'):
+            flag = True
+            if(result_data=='00'):
+                synElVal = 0
+            elif(result_data=='01'):
+                synElVal = 1
+            elif(result_data==('10'|'11')):
+                synElVal = 2
+            else:
+                flag = False
+        if(str_type=='amvr_index'):
+            if(len(result_data)==4):
+                flag = True
+                synElVal = self.str_to_int(result_data)        
+        if(str_type=='affine_amvr_index'):
+            if(len(result_data)==2):
+                flag = True
+                synElVal = self.str_to_int(result_data)
+        if(str_type=='extend_mvr_flag'):
+            flag = True
+            synElVal = self.str_to_int(result_data)
+        if(str_type=='cu_subtype_index'):
+            if(len(result_data)=((PictureType == 1) ? (1+ NumOfHmvpCand) :(3+NumOfHmvpCand))):
+                flag = True
+                synElVal = self.str_to_int(result_data)
+        if(str_type=='cu_affine_cand_idx'):
+            if(len(result_data)==4):
+                flag = True
+                synElVal = self.str_to_int(result_data)
+        if(str_type=='umve_dir_idx'):
+            flag = True
+            if(result_data=='00'):
+                synElVal = 0
+            elif(result_data=='01'):
+                synElVal = 1
+            elif(result_data=='10'):
+                synElVal = 2
+            elif(result_data=='11'):
+                synElVal = 3
+            else:
+                flag = False
+        if(str_type=='umve_step_idx'):
+            if(len(result_data)==4):
+                flag = True
+                synElVal = self.str_to_int(result_data)
+        if(str_type=='umve_mv_idx'):
+            flag = True
+            synElVal = self.str_to_int(result_data)
+            return synElVal
+        if(str_type==('ctp_u'|'ctp_v'|'skip_flag'|'umve_flag'|'affine_flag'|'intra_cu_flag'|'dt_split_flag'|'dt_split_dir'|'dt_split_hqt_flag'|'dt_split_hadt_flag'|'dt_split_vqt_flag'|'dt_split_vadt_flag')):
+            flag = True
+            return self.str_to_int(result_data)
+        if(str_type=='intra_chroma_pred_mode'):#未完成
+            maxVal=(self.tscpm_enable_flag ? 5 : 4)
+            if(result_data[0]=='1'):
+                flag = True
+                synElVal = len(result_data)-1
+        if(str_type=='root_cu_mode'):
+            flag = True
+            return self.str_to_int(result_data)
+        if(str_type=='bet_split_type_flag'):
+            flag = True
+            return self.str_to_int(result_data)
+        if(str_type=='bet_split_flag'):
+            flag = True
+            return self.str_to_int(result_data)
+        if(str_type=='qt_split_flag'):
+            flag = True
+            return self.str_to_int(result_data)
+        if(str_type=='aec_lcu_stuffing_bit'):
+            flag = True
+            return self.str_to_int(result_data)
+        if(str_type=='alf_lcu_enable_flag'):
+            flag = True
+            return self.str_to_int(result_data)
+        if(str_type=='sao_edge_type'):
+            if(len(result_data)==2):
+               flag = True
+               return self.str_to_int(result_data)
+            else:
+                flag = False
+        if(str_type=='sao_interval_delta_pos_minus2'):
+            flag = True
+            if(result_data=='10'):
+                return 0
+            elif(result_data=='11'):
+                return 1
+            elif(result_data=='0100'):
+                return 2
+            elif(result_data=='0101'):
+                return 3
+            elif(result_data=='0110'):
+                return 4         
+            elif(result_data=='0111'):
+                return 5
+            elif(result_data=='001000'):
+                return 6
+            elif(result_data=='001001'):
+                return 7
+            elif(result_data=='001010'):
+                return 8
+            elif(result_data=='001011'):
+                return 9               
+            elif(result_data=='001100'):
+                return 10
+            elif(result_data=='001101'):
+                return 11
+            elif(result_data=='001110'):
+                return 12
+            elif(result_data=='001111'):
+                return 13
+            elif(result_data=='000'):
+                return 14
+            else:
+                flag = False
+#######################
+        if(str_type=='sao_interval_start_pos'):
+            if(len(result_data)==5):
+                flag = True
+                return self.str_to_int(result_data)
+            else:
+                flag = False
+
+        if(str_type=='sao_edge_offset'):
+            flag = True
+            if(result_data=='1'):
+                self.sao_edge_offset[compIdx][0] = 1
+                self.sao_edge_offset[compIdx][3] = -1
+            elif(result_data=='01'):  
+                self.sao_edge_offset[compIdx][0] = 0
+                self.sao_edge_offset[compIdx][3] = 0  
+            elif(result_data=='001'):
+                self.sao_edge_offset[compIdx][0] = 2
+                self.sao_edge_offset[compIdx][3] = -2
+            elif(result_data=='0001'):  
+                self.sao_edge_offset[compIdx][0] = -1
+                self.sao_edge_offset[compIdx][3] = 1  
+            elif(result_data=='00001'):
+                self.sao_edge_offset[compIdx][0] = 3
+                self.sao_edge_offset[compIdx][3] = -3
+            elif(result_data=='000001'):  
+                self.sao_edge_offset[compIdx][0] = 4
+                self.sao_edge_offset[compIdx][3] = -4 
+            elif(result_data=='0000001'):
+                self.sao_edge_offset[compIdx][0] = 5
+                self.sao_edge_offset[compIdx][3] = -5
+            elif(result_data=='00000001'):  
+                self.sao_edge_offset[compIdx][0] = 6
+                self.sao_edge_offset[compIdx][3] = -6 
+            else:
+                flag = False
+            if(flag == True):
+                if(result_data[0]=='0'):
+                    self.sao_edge_offset[compIdx][1] = 1
+                    self.sao_edge_offset[compIdx][2] = -1
+                if(result_data[0]=='1'):
+                    self.sao_edge_offset[compIdx][1] = 0
+                    self.sao_edge_offset[compIdx][2] = 0
+
+        if(str_type=='sao_interval_offset_sign'):
+            flag =  True
+            return self.str_to_int(result_data)
+        if(str_type=='sao_interval_offset_abs'):
+            if(result_data[-1]=='1'):
+                flag =  True
+                return len(result_data)-1
+            else:
+                flag =  False
+
+        if(str_type=='lcu_qp_delta'):
+            if(result_data[-1]=='1'):
+                synElVal = len(result_data)-1
+                if(synElVal%2==0):
+                    cu_qp_delta = -(synElVal / 2)
+                else:
+                    cu_qp_delta = (synElVal / 2)
+                return cu_qp_delta
+                flag =  True
+            else:
+                flag = False
+
+        if(str_type=='sao_mode'):
+            if(result_data[-1]=='1'):
+                return = len(result_data)-1
+                flag =  True
+            else:
+                flag = False
+            
+        if(str_type=='sao_merge_type_index'):
+            flag =  True
+            if((self.SaoMergeLeftAvai==1)&(self.SaoMergeUpAvai==0)&(self.binIdx==0)&(result_data=='0')):
+                self.sao_merge_type_index = 0
+            if((self.SaoMergeLeftAvai==1)&(self.SaoMergeUpAvai==0)&(self.binIdx==1)&(result_data=='0')):
+                self.sao_merge_type_index = 1
+            if((self.SaoMergeLeftAvai==0)&(self.SaoMergeUpAvai==1)&(self.binIdx==0)&(result_data=='0')):
+                self.sao_merge_type_index = 0  
+            if((self.SaoMergeLeftAvai==1)&(self.SaoMergeUpAvai==0)&(self.binIdx==1)&(result_data=='0')):
+                self.sao_merge_type_index = 1
+            if((self.SaoMergeLeftAvai==1)&(self.SaoMergeUpAvai==1)&(self.binIdx==0)&(result_data=='00')):
+                self.sao_merge_type_index = 0
+            if((self.SaoMergeLeftAvai==1)&(self.SaoMergeUpAvai==1)&(self.binIdx==0)&(result_data[0]=='1')):
+                self.sao_merge_type_index = 1
+            if((self.SaoMergeLeftAvai==1)&(self.SaoMergeUpAvai==1)&(self.binIdx==0)&(result_data=='01')):
+                self.sao_merge_type_index = 2
+        return flag
+
     def get_SaoMode(self,n):
         if(n==0):
             return 'SAO_Off'
@@ -625,65 +1162,7 @@ class sequence_header:
         string = self.data_file[self.pointer_position:self.pointer_position+read_length]
         return string
     
-    #CABAC
-    def read_ae(self,str_type):
-        self.binIdx = -1
-        result_data = ''
-        while(~self.flag_anti_bin_method(result_data,str_type)):
-            self.binIdx = self.binIdx + 1
-
-            if((str_type=='sao_mode')&(self.binIdx!=0)):
-                self.BypassFlag = 1
-                self.ctxIdxInc = 0
-                binVal = self.decode_decision()
-                result_data = result_data + str(binVal)
-            if(str_type=='lcu_qp_delta'):
-                self.BypassFlag = 0
-                self.StuffingBitFlag = 0
-                if((binIdx==0)&(self.PreviousDeltaQP==0)):
-                    self.ctxIdxInc = 0
-                elif((binIdx==0)&(self.PreviousDeltaQP!=0)):
-                    self.ctxIdxInc = 1
-                elif(binIdx==1):
-                    self.ctxIdxInc = 2
-                else:
-                    self.ctxIdxInc = 3
-                self.ctxIdxStart = 0
-                self.ctxIdx = ctxIdxInc + ctxIdxStart
-                self.cFlag = 0
-                #self.ctx = 
-                binVal = self.decode_decision()
-                result_data = result_data + str(binVal)
-        
-        return self.match_anti_bin_method(result_data,str_type)
-    
-    #判断是否满足反二值化
-    def flag_anti_bin_method(self,result_data,str_type):
-        if(str_type=='lcu_qp_delta'):
-            if(result_data[-1]=='1'):
-                return True
-            else:
-                return False
-        if(str_type=='sao_mode'):
-            if(result_data[-1]=='1'):
-                return True
-            else:
-                return False
-
-
-    #解析反二值化
-    def match_anti_bin_method(self,result_data,str_type):
-        if(str_type=='lcu_qp_delta'):
-            synElVal = len(result_data)-1
-            if(synElVal%2==0):
-                cu_qp_delta = -(synElVal / 2)
-            else:
-                cu_qp_delta = (synElVal / 2)
-            return cu_qp_delta
-        if(str_type=='sao_mode'):
-            synElVal = len(result_data)-1
-            return synElVal
-        
+      
     def decode_aec_stuffing_bit(self):
         ctx0.lgPmps=4
         ctx0.mps=0
@@ -874,17 +1353,17 @@ class sequence_header:
         allowSplitBt = allowSplitBtVer | allowSplitBtHor
         allowSplitEqt = allowSplitEqtVer | allowSplitEqtHor
         if (allowSplitQt & (allowNoSplit | allowSplitBt | allowSplitEqt)):
-            self.qt_split_flag = self.read_ae()
+            self.qt_split_flag = self.read_ae('qt_split_flag')
         if (QtSplitFlag==0):
             if (allowNoSplit & (allowSplitBt | allowSplitEqt)):
-                self.bet_split_flag = self.read_ae()
+                self.bet_split_flag = self.read_ae('bet_split_flag')
             if (BetSplitFlag):
                 if (allowSplitBt & allowSplitEqt):
-                    self.bet_split_type_flag = self.read_ae()
+                    self.bet_split_type_flag = self.read_ae('bet_split_type_flag')
                 if ((BetSplitTypeFlag==0) & allowSplitBtHor & allowSplitBtVer) | (BetSplitTypeFlag &allowSplitEqtHor & allowSplitEqtVer):
-                    bet_split_dir_flag
+                    self.bet_split_dir_flag= self.read_ae('bet_split_dir_flag')
         if ((PictureType != 0) & ((((BetSplitFlag & (BetSplitTypeFlag==0)) | QtSplitFlag) & (width * height== 64)) | (BetSplitTypeFlag & (width * height == 128)))):
-            self.root_cu_mode = self.read_ae()
+            self.root_cu_mode = self.read_ae('root_cu_mode')
             if(root_cu_mode):
                 modeChild = 'PRED_Intra_Only'
             else:
@@ -959,14 +1438,14 @@ class sequence_header:
     def coding_unit(self,x0, y0, width, height, mode, component):
         if (component == 'COMPONENT_Chroma'):
             if ((priorCuMode == 1) & (chroma_format != '00')):
-                self.intra_chroma_pred_mode = self.read_ae()
+                self.intra_chroma_pred_mode = self.read_ae('intra_chroma_pred_mode')
             NumOfTransBlocks = 3
             ctp_y[0] = 0
             CuCtp += ctp_y[0]
             if (IntraChromaPredMode != 'Intra_Chroma_PCM'):
-                self.ctp_u = self.read_ae()
+                self.ctp_u = self.read_ae('ctp_u')
                 CuCtp += (ctp_u << 1)
-                self.ctp_v = self.read_ae()
+                self.ctp_v = self.read_ae('ctp_v')
                 CuCtp += (ctp_v << 2)
             for i in range(2):
                 IsPcmMode[i-2+NumOfTransBlocks] = (IntraChromaPredMode == 'Intra_Chroma_PCM')
@@ -977,102 +1456,102 @@ class sequence_header:
         else:
             if (PictureType != 0):
                 if (mode != 'PRED_Intra_Only'):
-                    self.skip_flag = self.read_ae()
+                    self.skip_flag = self.read_ae('skip_flag')
                 if (self.skip_flag):
                     if (UmveEnableFlag):
-                        self.umve_flag = self.read_ae()
+                        self.umve_flag = self.read_ae('umve_flag')
                     if (AffineEnableFlag & (UmveFlag==0)  & (width >= 16) & (height >= 16)):
-                        self.affine_flag = self.read_ae()
+                        self.affine_flag = self.read_ae('affine_flag')
                 if (~SkipFlag):
                     if (mode != 'PRED_Intra_Only'):
-                        self.direct_flag = self.read_ae()
+                        self.direct_flag = self.read_ae('direct_flag')
                     if (DirectFlag):
                         if (UmveEnableFlag):
-                            self.umve_flag = self.read_ae()
+                            self.umve_flag = self.read_ae('umve_flag')
                         if (AffineEnableFlag & (UmveFlag==0)  & (width >= 16) & (height >= 16)):
-                            self.affine_flag = self.read_ae()
+                            self.affine_flag = self.read_ae('affine_flag')
                     if (~DirectFlag & (mode == 'PRED_No_Constraint')):
-                        self.intra_cu_flag = self.read_ae()
+                        self.intra_cu_flag = self.read_ae('intra_cu_flag')
             PartSize = 'SIZE_2Mx2N'
             if (DtEnableFlag & IntraCuFlag):
                 allowDtHorSplit = (height >= DtMinSize) & (height <= DtMaxSize) & (width / height < 4)& (width <= DtMaxSize)
                 allowDtVerSplit = (width >= DtMinSize) & (width <= DtMaxSize) & (height / width < 4)& (height <= DtMaxSize)
                 if (allowDtHorSplit | allowDtVerSplit):
-                    self.dt_split_flag = self.read_ae()
+                    self.dt_split_flag = self.read_ae('dt_split_flag')
                     if (DtSplitFlag):
                         if (allowDtHorSplit & allowDtVerSplit):
-                            self.dt_split_dir = self.read_ae()
+                            self.dt_split_dir = self.read_ae('dt_split_dir')
                         elif (allowDtHorSplit):
                             DtSplitDir = 1
                         else:
                             DtSplitDir = 0
                         if(DtSplitDir):
-                            self.dt_split_hqt_flag = self.read_ae()
+                            self.dt_split_hqt_flag = self.read_ae('dt_split_hqt_flag')
                             if (~self.dt_split_hqt_flag):
-                                self.dt_split_hadt_flag = self.read_ae()
+                                self.dt_split_hadt_flag = self.read_ae('dt_split_hadt_flag')
                         else:
-                            self.dt_split_vqt_flag = self.read_ae()
+                            self.dt_split_vqt_flag = self.read_ae('dt_split_vqt_flag')
                             if (~self.dt_split_vqt_flag):
-                                self.dt_split_vadt_flag = self.read_ae()
+                                self.dt_split_vadt_flag = self.read_ae('dt_split_vadt_flag')
             if (UmveFlag):
-                self.umve_mv_idx = self.read_ae()
-                self.umve_step_idx = self.read_ae()
-                self.umve_dir_idx = self.read_ae()
+                self.umve_mv_idx = self.read_ae('umve_mv_idx')
+                self.umve_step_idx = self.read_ae('umve_step_idx')
+                self.umve_dir_idx = self.read_ae('umve_dir_idx')
             elif ((SkipFlag | DirectFlag) & AffineFlag):
-                self.cu_affine_cand_idx = self.read_ae()
+                self.cu_affine_cand_idx = self.read_ae('cu_affine_cand_idx')
             elif (SkipFlag | DirectFlag):
-                self.cu_subtype_index = self.read_ae()
+                self.cu_subtype_index = self.read_ae('cu_subtype_index')
             if ((SkipFlag==0)  & (DirectFlag==0)):
                 if (IntraCuFlag==0):
                     if (AffineEnableFlag & (width >= 16) & (height >= 16)):
-                        self.affine_flag = self.read_ae()
+                        self.affine_flag = self.read_ae('affine_flag')
                 if (AmvrEnableFlag):
                     if (EmvrEnableFlag & ~AffineFlag):
-                        self.extend_mvr_flag = self.read_ae()
+                        self.extend_mvr_flag = self.read_ae('extend_mvr_flag')
                     if (AffineFlag):
-                        self.affine_amvr_index = self.read_ae()
+                        self.affine_amvr_index = self.read_ae('affine_amvr_index')
                     else:
-                        self.amvr_index = self.read_ae()
+                        self.amvr_index = self.read_ae('amvr_index')
                 if (PictureType == 2):
-                    self.inter_pred_ref_mode = self.read_ae()
+                    self.inter_pred_ref_mode = self.read_ae('inter_pred_ref_mode')
                 if (SmvdEnableFlag & SmvdApplyFlag & ~AffineFlag & (InterPredRefMode == 2)& ~ExtendMvrFlag):
-                    self.smvd_flag = self.read_ae()
+                    self.smvd_flag = self.read_ae('smvd_flag')
                 if (MvExistL0):
                     if ((SmvdFlag==0) & NumRefActive[0] > 1):
-                        self.pu_reference_index_l0 = self.read_ae()
-                    self.mv_diff_x_abs_l0 = self.read_ae()
+                        self.pu_reference_index_l0 = self.read_ae('pu_reference_index_l0')
+                    self.mv_diff_x_abs_l0 = self.read_ae('mv_diff_x_abs_l0')
                     if (MvDiffXAbsL0):
-                        self.mv_diff_x_sign_l0 = self.read_ae()
-                    self.mv_diff_y_abs_l0 = self.read_ae()
+                        self.mv_diff_x_sign_l0 = self.read_ae('mv_diff_x_sign_l0')
+                    self.mv_diff_y_abs_l0 = self.read_ae('mv_diff_y_abs_l0')
                     if (MvDiffYAbsL0):
-                        self.mv_diff_y_sign_l0 = self.read_ae()
+                        self.mv_diff_y_sign_l0 = self.read_ae('mv_diff_y_sign_l0')
                     if (AffineFlag):
-                        self.mv_diff_x_abs_l0_affine = self.read_ae()
+                        self.mv_diff_x_abs_l0_affine = self.read_ae('mv_diff_x_abs_l0')#找不到解码方法
                         if (MvDiffXAbsL0Affine):
-                            self.mv_diff_x_sign_l0_affine = self.read_ae()
-                        self.mv_diff_y_abs_l0_affine = self.read_ae()
+                            self.mv_diff_x_sign_l0_affine = self.read_ae('mv_diff_x_sign_l0')
+                        self.mv_diff_y_abs_l0_affine = self.read_ae('mv_diff_y_abs_l0')
                         if (MvDiffYAbsL0Affine):
-                            self.mv_diff_y_sign_l0_affine = self.read_ae()
+                            self.mv_diff_y_sign_l0_affine = self.read_ae('mv_diff_y_sign_l0')
                 if (MvExistL1 &  (SmvdFlag==0)):
                     if (NumRefActive[1] > 1):
-                        self.pu_reference_index_l1 = self.read_ae()
-                    self.mv_diff_x_abs_l1 = self.read_ae()
+                        self.pu_reference_index_l1 = self.read_ae('pu_reference_index_l1')
+                    self.mv_diff_x_abs_l1 = self.read_ae('mv_diff_x_abs_l1')
                     if (MvDiffXAbsL1):
-                        self.mv_diff_x_sign_l1 = self.read_ae()
-                    self.mv_diff_y_abs_l1 = self.read_ae()
+                        self.mv_diff_x_sign_l1 = self.read_ae('mv_diff_x_sign_l1')
+                    self.mv_diff_y_abs_l1 = self.read_ae('mv_diff_y_abs_l1')
                     if (MvDiffYAbsL1):
-                        self.mv_diff_y_sign_l1 = self.read_ae()
+                        self.mv_diff_y_sign_l1 = self.read_ae('mv_diff_y_sign_l1')
                     if (AffineFlag):
-                        self.mv_diff_x_abs_l1_affine = self.read_ae()
+                        self.mv_diff_x_abs_l1_affine = self.read_ae('mv_diff_x_abs_l1')
                         if (MvDiffXAbsL1Affine):
-                            self.mv_diff_x_sign_l1_affine = self.read_ae()
-                        self.mv_diff_y_abs_l1_affine = self.read_ae()
+                            self.mv_diff_x_sign_l1_affine = self.read_ae('mv_diff_x_sign_l1')
+                        self.mv_diff_y_abs_l1_affine = self.read_ae('mv_diff_y_abs_l1')
                         if (MvDiffYAbsL1Affine):
-                            self.mv_diff_y_sign_l1_affine = self.read_ae()
+                            self.mv_diff_y_sign_l1_affine = self.read_ae('mv_diff_y_sign_l1')
             else:
                 TuOrder = 0
                 for i in range(NumOfIntraPredBlock):
-                    self.intra_luma_pred_mode = self.read_ae()
+                    self.intra_luma_pred_mode = self.read_ae('intra_luma_pred_mode')
                 if (PartSize == 'SIZE_2Mx2N'):
                     IsPcmMode[TuOrder] = (IntraLumaPredMode == 'Intra_Luma_PCM')
                     TuOrder=TuOrder+1
@@ -1083,11 +1562,11 @@ class sequence_header:
                     IsPcmMode[3] = 0
                     TuOrder=3
                 if (IntraCuFlag & (chroma_format != '00') & (component=='COMPONENT_LUMACHROMA')):
-                    self.intra_chroma_pred_mode = self.read_ae()
+                    self.intra_chroma_pred_mode = self.read_ae('intra_chroma_pred_mode')
                     IsPcmMode[TuOrder+1] = (IntraChromaPredMode == 'Intra_Chroma_PCM')
                     IsPcmMode[TuOrder+2] = (IntraChromaPredMode == 'Intra_Chroma_PCM')
                 if (IpfEnableFlag & (PartSize == 'SIZE_2Mx2N') & (~IsPcmMode[0])):
-                    self.ipf_flag = self.read_ae()
+                    self.ipf_flag = self.read_ae('ipf_flag')
         if ((IntraCuFlag==0) & (SkipFlag==0)):
             if ((DirectFlag==0) & component == 'COMPONENT_LUMACHROMA'):
                 self.ctp_zero_flag = self.read_ae()
@@ -1097,8 +1576,8 @@ class sequence_header:
                     self.pbt_cu_flag = self.read_ae()
                 if (PbtCuFlag==0):
                     if (component == 'COMPONENT_LUMACHROMA'):
-                        self.ctp_u = self.read_ae()
-                        self.ctp_v = self.read_ae()
+                        self.ctp_u = self.read_ae('ctp_u')
+                        self.ctp_v = self.read_ae('ctp_v')
                     CuCtp = ctp_u << (NumOfTransBlocks)
                     CuCtp = CuCtp>>2
                     CuCtp += (ctp_v << (NumOfTransBlocks))
@@ -1110,8 +1589,8 @@ class sequence_header:
                         CuCtp += ctp_y[0]
                 else:
                     if (component == 'COMPONENT_LUMACHROMA'):
-                        self.ctp_u = self.read_ae()
-                        self.ctp_v = self.read_ae()
+                        self.ctp_u = self.read_ae('ctp_u')
+                        self.ctp_v = self.read_ae('ctp_v')
                     CuCtp = ctp_u << (NumOfTransBlocks)
                     CuCtp = CuCtp>>2
                     CuCtp += (ctp_v << (NumOfTransBlocks))
@@ -1126,8 +1605,8 @@ class sequence_header:
                     self.ctp_y[i] = self.read_ae()
                     CuCtp += (ctp_y[i] << i)
             if ((component == 'COMPONENT_LUMACHROMA') & (IntraChromaPredMode !='Intra_Chroma_PCM')):
-                self.ctp_u = self.read_ae()
-                self.ctp_v = self.read_ae()
+                self.ctp_u = self.read_ae('ctp_u')
+                self.ctp_v = self.read_ae('ctp_v')
             CuCtp += (ctp_u << (NumOfTransBlocks-2))
             CuCtp += (ctp_v << (NumOfTransBlocks-1))
         for i in range(NumOfTransBlocks):
