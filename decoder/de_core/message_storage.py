@@ -579,8 +579,11 @@ class sequence_header:
             data_string = str_input
         return data_string
     def assign_data(self,str_value,len_data):
+        data_value = self.str_to_int(self.get_read_data(len_data))
+        print(str_value,'  ',hex(data_value))
         data_value = self.str_to_hex(self.pop_read_data(len_data))
         print(str_value,'  ',data_value)
+        
         return data_value
 
 
