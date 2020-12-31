@@ -57,6 +57,7 @@ class video_sequence:
         return string
         #return hex(int(string.hex(),16))
         #return string.hex()
+
 #比特流信息
 class bitstream_data:
     def __init__(self,input_decoder_file):
@@ -110,67 +111,173 @@ class bitstream_data:
         data_value = self.str_to_hex(self.pop_read_data(len_data))
         print(str_value,'  ',data_value)
         return data_value
+
 #序列头定义
 class sequence_header:
     def __init__(self,bitstream_data):
         self.bsd = bitstream_data
+        self.video_sequence_start_code=0#序列头起始码
         self.profile_id=0#档次标号
         self.level_id=0#级别标号
-        self.progressive_sequence=0
-        self.field_coded_sequence=0
+        self.progressive_sequence=0#逐行序列标志
+        self.field_coded_sequence=0#场图像序列标志
         self.library_stream_flag=0#知识位流标志.值为'1'表示当前位流是知识位流;值为'0'表示当前位流是主位流
         self.library_picture_enable_flag=0#知识图像允许标志.值为'1'表示视频序列中可存在使用知识图像作为参考图像的帧间预测图像;值为'0'表示视频序列中不应存在使用知识图像作为参考图像的帧间预测图像。
         self.duplicate_sequence_header_flag=0#知识位流重复序列头标志.
-        self.horizontal_size=0
-        self.vertical_size=0
-        self.chroma_format=0
-        self.sample_precision=0
-        self.encoding_precision=0
-        self.aspect_ratio=0
-        self.frame_rate_code=0
-        self.bit_rate_lower=0
-        self.bit_rate_upper=0
-        self.low_delay=0
-        self.temporal_id_enable_flag=0
-        self.bbv_buffer_size=0
-        self.max_dpb_minus1=0
-        self.rpl1_idx_exist_flag=0
-        self.rpl1_same_as_rpl0_flag=0
-        self.num_ref_pic_list_set =[0 for i in range(2)] 
-        self.num_ref_default_active_minus1 = [0 for i in range(2)]
-        self.log2_lcu_size_minus2=0
-        self.log2_min_cu_size_minus2=0
-        self.log2_max_part_ratio_minus2=0
-        self.max_split_times_minus6=0
-        self.log2_min_qt_size_minus2=0
-        self.log2_max_bt_size_minus2=0
-        self.log2_max_eqt_size_minus3=0
-        self.weight_quant_enable_flag=0
-        self.load_seq_weight_quant_data_flag=0
-        self.secondary_transform_enable_flag=0
-        self.sample_adaptive_offset_enable_flag=0
-        self.adaptive_leveling_filter_enable_flag=0
-        self.affine_enable_flag=0
-        self.smvd_enable_flag=0
-        self.ipcm_enable_flag=0
-        self.amvr_enable_flag=0
-        self.num_of_hmvp_cand=0
-        self.umve_enable_flag=0
-        self.emvr_enable_flag=0
-        self.ipf_enable_flag=0
-        self.tscpm_enable_flag=0
-        self.dt_enable_flag=0
-        self.log2_max_dt_size_minus4=0
-        self.pbt_enable_flag=0
-        self.output_reorder_delay=0
-        self.cross_patch_loopfilter_enable_flag=0
-        self.ref_colocated_patch_flag =0
-        self.stable_patch_flag =0
-        self.uniform_patch_flag =0
-        self.patch_width_minus1 =0
-        self.patch_height_minus1=0
-        self.reserved_bits=0
-        self.marker_bit =0
+        self.horizontal_size=0#水平尺寸
+        self.vertical_size=0#垂直尺寸
+        self.chroma_format=0#色度格式
+        self.sample_precision=0#样本精度
+        self.encoding_precision=0#编码样本精度
+        self.aspect_ratio=0#宽高比
+        self.frame_rate_code=0#帧率代码
+        self.bit_rate_lower=0#比特率低位
+        self.bit_rate_upper=0#比特率高位
+        self.low_delay=0#低延迟
+        self.temporal_id_enable_flag=0#时间层标识允许标志
+        self.bbv_buffer_size=0#位流缓冲区尺寸
+        self.max_dpb_minus1=0#最大解码图像缓冲区大小
+        self.rpl1_idx_exist_flag=0#参考图像队列1索引存在标志
+        self.rpl1_same_as_rpl0_flag=0#参考图像队列相同标志
+        self.num_ref_pic_list_set =[0 for i in range(2)] #参考图像队列配置集数
+        self.num_ref_default_active_minus1 = [0 for i in range(2)]#默认活跃参考图像数
+        self.log2_lcu_size_minus2=0#最大编码单元尺寸
+        self.log2_min_cu_size_minus2=0#最小编码单元尺寸
+        self.log2_max_part_ratio_minus2=0#划分单元最大比例
+        self.max_split_times_minus6=0#编码树最大划分次数
+        self.log2_min_qt_size_minus2=0#最小四叉树尺寸
+        self.log2_max_bt_size_minus2=0#最大二叉树尺寸
+        self.log2_max_eqt_size_minus3=0#最大扩展四叉树尺寸
+        self.weight_quant_enable_flag=0#加权量化允许标志
+        self.load_seq_weight_quant_data_flag=0#加权量化矩阵加载标志
+        self.secondary_transform_enable_flag=0#二次变换允许标志
+        self.sample_adaptive_offset_enable_flag=0#样值偏移补偿允许标志
+        self.adaptive_leveling_filter_enable_flag=0#自适应修正滤波允许标志
+        self.affine_enable_flag=0#仿射运动补偿允许标志
+        self.smvd_enable_flag=0#对称运动矢量差模式允许标志
+        self.ipcm_enable_flag=0#脉冲编码调制模式允许标志
+        self.amvr_enable_flag=0#自适应运动矢量精度允许标志
+        self.num_of_hmvp_cand=0#候选历史运动信息数
+        self.umve_enable_flag=0#高级运动矢量表达模式允许标志
+        self.emvr_enable_flag=0#运动矢量精度扩展模式允许标志
+        self.ipf_enable_flag=0#帧内预测滤波允许标志
+        self.tscpm_enable_flag=0#色度两步预测模式允许标志
+        self.dt_enable_flag=0#帧内衍生模式允许标志
+        self.log2_max_dt_size_minus4=0#衍生模式待划分边长最大尺寸
+        self.pbt_enable_flag=0#基于位置的变换允许标志
+        self.output_reorder_delay=0#图像重排序延迟
+        self.cross_patch_loopfilter_enable_flag=0#跨片环路滤波允许标志
+        self.ref_colocated_patch_flag =0#参考同位置片标志
+        self.stable_patch_flag =0#片划分一致性标志
+        self.uniform_patch_flag =0#统一片大小标志
+        self.patch_width_minus1 =0#片宽度
+        self.patch_height_minus1=0#片高度
+        self.reserved_bits=0#
+        self.marker_bit =0#
+    def run(self):
+        if(self.bsd.get_read_data(32)==dict['video_sequence_start_code']):
+            print('position....................',self.pointer_position)
+            self.video_sequence_start_code = self.bsd.assign_data('video_sequence_start_code',32)
+            self.profile_id = self.bsd.assign_data('profile_id',8)
+            self.level_id = self.bsd.assign_data('level_id',8)
+            self.progressive_sequence = self.bsd.assign_data('progressive_sequence',1)
+            self.field_coded_sequence = self.bsd.assign_data('field_coded_sequence',1)
+            self.library_stream_flag = self.bsd.assign_data('library_stream_flag',1)
+            if(self.library_stream_flag == '0'):
+                self.library_picture_enable_flag = self.bsd.assign_data('library_picture_enable_flag',1)
+                if(self.library_picture_enable_flag=='1'):
+                    self.duplicate_seq_header_flag = self.bsd.assign_data('duplicate_seq_header_flag',1)
+            self.marker_bit = self.bsd.assign_data('marker_bit',1)
+            self.horizontal_size = self.bsd.assign_data('horizontal_size',14)
+            self.marker_bit = self.bsd.assign_data('marker_bit',1)
+            self.vertical_size = self.bsd.assign_data('vertical_size',14)
+            self.chroma_format = self.bsd.assign_data('chroma_format',2)
+            self.sample_precision = self.bsd.assign_data('sample_precision',3)
+            if ((self.profile_id) == '22'):
+                self.encoding_precision = self.bsd.assign_data('encoding_precision',3)
+            self.marker_bit = self.bsd.assign_data('marker_bit',1)
+            self.aspect_ratio = self.bsd.assign_data('aspect_ratio',4)
+            self.frame_rate_code = self.bsd.assign_data('frame_rate_code',4)
+            self.marker_bit = self.bsd.assign_data('marker_bit',1)
+            self.bit_rate_lower = self.bsd.assign_data('bit_rate_lower',18)
+            self.marker_bit = self.bsd.assign_data('marker_bit',1)
+            self.bit_rate_upper = self.bsd.assign_data('bit_rate_upper',12)
+            self.low_delay = self.bsd.assign_data('low_delay',1)
+            self.temporal_id_enable_flag = self.bsd.assign_data('temporal_id_enable_flag',1)
+            self.marker_bit = self.bsd.assign_data('marker_bit',1)
+            self.bbv_buffer_size = self.bsd.assign_data('bbv_buffer_size',18)
+            self.marker_bit = self.bsd.assign_data('marker_bit',1)
+            self.max_dpb_minus1 = self.bsd.assign_data('max_dpb_minus1',4)
+            self.rpl1_idx_exist_flag = self.bsd.assign_data('rpl1_idx_exist_flag',1)
+            self.rpl1_same_as_rpl0_flag = self.bsd.assign_data('rpl1_same_as_rpl0_flag',1)
+            self.marker_bit = self.bsd.assign_data('marker_bit',1)
+            self.num_ref_pic_list_set[0] = self.bsd.read_ue()
+            
+            print('position1....................',self.pointer_position)
+            print('num_ref_pic_list_set[0]  ',((self.num_ref_pic_list_set[0])))
+            self.NumOfRefPic[0] = [0 for i in range(self.num_ref_pic_list_set[0])]
+            #=======================================
+            for i in range(int(self.num_ref_pic_list_set[0])):
+                self.reference_picture_list_set(0,i)
+            if(self.rpl1_same_as_rpl0_flag=='0'):
+                self.num_ref_pic_list_set[1] = self.bsd.read_ue()
+                print('num_ref_pic_list_set[1]    ',self.num_ref_pic_list_set[1])
+                self.NumOfRefPic[1] = [0 for i in range(self.num_ref_pic_list_set[1])]
+                for i in range(int(self.num_ref_pic_list_set[1])):
+                    self.reference_picture_list_set(1,i)
+            
+            self.num_ref_default_active_minus1[0] = self.bsd.read_ue()
+            print('num_ref_default_active_minus1[0]  ',((self.num_ref_default_active_minus1[0])))
+            self.num_ref_default_active_minus1[1] = self.bsd.read_ue()
+            print('num_ref_default_active_minus1[1]  ',((self.num_ref_default_active_minus1[1])))
+            self.log2_lcu_size_minus2 = self.bsd.assign_data('log2_lcu_size_minus2',3)
+            self.log2_min_cu_size_minus2 = self.bsd.assign_data('log2_min_cu_size_minus2',2)
+            self.log2_max_part_ratio_minus2 = self.bsd.assign_data('log2_max_part_ratio_minus2',2)
+            self.max_split_times_minus6 = self.bsd.assign_data('max_split_times_minus6',3)
+            self.log2_min_qt_size_minus2 = self.bsd.assign_data('log2_min_qt_size_minus2',3)
+            self.log2_max_bt_size_minus2 = self.bsd.assign_data('log2_max_bt_size_minus2',3)
+            self.log2_max_eqt_size_minus3 = self.bsd.assign_data('log2_max_eqt_size_minus3',2)
+            self.marker_bit = self.bsd.assign_data('marker_bit',1)
+            self.weight_quant_enable_flag = self.bsd.assign_data('weight_quant_enable_flag',1)
+            
+            if(self.weight_quant_enable_flag=='1'):
+                self.load_seq_weight_quant_data_flag = self.bsd.assign_data('load_seq_weight_quant_data_flag',1)
+                if(self.load_seq_weight_quant_data_flag=='1'):
+                    self.weight_quant_matrix()
+            self.secondary_transform_enable_flag = self.bsd.assign_data('secondary_transform_enable_flag',1)
+            self.sample_adaptive_offset_enable_flag = self.bsd.assign_data('sample_adaptive_offset_enable_flag',1)
+            self.adaptive_leveling_filter_enable_flag = self.bsd.assign_data('adaptive_leveling_filter_enable_flag',1)
+            self.affine_enable_flag = self.bsd.assign_data('affine_enable_flag',1)
+            self.smvd_enable_flag = self.bsd.assign_data('smvd_enable_flag',1)
+            self.ipcm_enable_flag = self.bsd.assign_data('ipcm_enable_flag',1)
+            self.amvr_enable_flag = self.bsd.assign_data('amvr_enable_flag',1)
+            self.num_of_hmvp_cand = self.bsd.assign_data('num_of_hmvp_cand',4)
+            self.umve_enable_flag = self.bsd.assign_data('umve_enable_flag',1)
+            if((self.num_of_hmvp_cand=='1') & (self.amvr_enable_flag=='1')):
+                self.emvr_enable_flag = self.bsd.assign_data('emvr_enable_flag',1)
+            self.ipf_enable_flag = self.bsd.assign_data('ipf_enable_flag',1)
+            self.tscpm_enable_flag = self.bsd.assign_data('tscpm_enable_flag',1)
+            self.marker_bit = self.bsd.assign_data('marker_bit',1)
+            self.dt_enable_flag = self.bsd.assign_data('dt_enable_flag',1)
+            if(self.dt_enable_flag=='1'):
+                self.log2_max_dt_size_minus4 = self.bsd.assign_data('log2_max_dt_size_minus4',2)
+            self.pbt_enable_flag = self.bsd.assign_data('pbt_enable_flag',1)
+            if(self.low_delay=='0'):
+                self.output_reorder_delay = self.bsd.assign_data('output_reorder_delay',5)
+            self.cross_patch_loopfilter_enable_flag = self.bsd.assign_data('cross_patch_loopfilter_enable_flag',1)
+            self.ref_colocated_patch_flag = self.bsd.assign_data('ref_colocated_patch_flag',1)
+            self.stable_patch_flag = self.bsd.assign_data('stable_patch_flag',1)
+            if(self.stable_patch_flag=='1'):
+                self.uniform_patch_flag = self.bsd.assign_data('uniform_patch_flag',1)
+                if(self.uniform_patch_flag=='1'):
+                    self.marker_bit = self.bsd.assign_data('marker_bit',1)
+                    self.patch_width_minus1 = self.bsd.read_ue()
+                    print('patch_width_minus1  ',((self.patch_width_minus1)))
+                    self.patch_height_minus1 = self.bsd.read_ue()
+                    print('patch_height_minus1  ',((self.patch_height_minus1)))
+            self.reserved_bits = self.bsd.assign_data('reserved_bits',2)
+            print('position....................',self.pointer_position)
+            self.pop_read_data(12)
 
 #序列头定义
 class sequence_header:
@@ -236,15 +343,15 @@ class sequence_header:
     
     #片定义
     def patch(self):
-        self.patch_start_code=self.assign_data('patch_start_code',32)#000001+0x00～0x7F(patch_index)
+        self.patch_start_code=self.bsd.assign_data('patch_start_code',32)#000001+0x00～0x7F(patch_index)
         if (self.fixed_picture_qp_flag == '0'):
-            self.fixed_patch_qp_flag=self.assign_data('fixed_patch_qp_flag',1)
-            self.patch_qp=self.assign_data('patch_qp',7)
+            self.fixed_patch_qp_flag=self.bsd.assign_data('fixed_patch_qp_flag',1)
+            self.patch_qp=self.bsd.assign_data('patch_qp',7)
         if (self.sample_adaptive_offset_enable_flag=='1'):#SaoEnableFlag
             for compIdx in range(3):
-                self.patch_sao_enable_flag[compIdx] = self.assign_data('patch_sao_enable_flag[compIdx]',1)
+                self.patch_sao_enable_flag[compIdx] = self.bsd.assign_data('patch_sao_enable_flag[compIdx]',1)
         while (self.byte_aligned()==0):#字节对齐
-            self.aec_byte_alignment_bit = self.assign_data('aec_byte_alignment_bit',1)
+            self.aec_byte_alignment_bit = self.bsd.assign_data('aec_byte_alignment_bit',1)
         while (is_end_of_patch()==0):
             if (FixedQP==0):
                 lcu_qp_delta
@@ -308,7 +415,7 @@ class sequence_header:
         print('extension_data begin')
         '''
         while ((self.get_read_data(32) == "extension_start_code")):#0x000001B5
-            self.extension_start_code = self.assign_data('intra_picture_start_code',32)
+            self.extension_start_code = self.bsd.assign_data('intra_picture_start_code',32)
             if(i==0):
                 if(self.get_read_data(4)== '0010'):#序列显示扩展 
                     self.sequence_display_extension()
@@ -345,194 +452,91 @@ class sequence_header:
     #用户数据定义
     def user_data(self):
         print('user_data begin')
-        self.user_data_start_code=self.assign_data('user_data_start_code',32)
+        self.user_data_start_code=self.bsd.assign_data('user_data_start_code',32)
         while (self.get_read_data(24) != '000000000000000000000001'):
-            self.user_data=self.assign_data('user_data',8)
+            self.user_data=self.bsd.assign_data('user_data',8)
 
     #帧内预测图像头定义
     def intra_picture_header(self):
         print('intra_picture_header begin begin begin begin begin begin begin begin begin begin begin begin begin')
-        self.intra_picture_start_code = self.assign_data('intra_picture_start_code',32)
-        self.bbv_delay = self.assign_data('bbv_delay',32)
-        self.time_code_flag = self.assign_data('time_code_flag',1)
+        self.intra_picture_start_code = self.bsd.assign_data('intra_picture_start_code',32)
+        self.bbv_delay = self.bsd.assign_data('bbv_delay',32)
+        self.time_code_flag = self.bsd.assign_data('time_code_flag',1)
         if (self.time_code_flag == '1'):
-            self.time_code = self.assign_data('time_code',24)
-        self.decode_order_index = self.assign_data('decode_order_index',8)
+            self.time_code = self.bsd.assign_data('time_code',24)
+        self.decode_order_index = self.bsd.assign_data('decode_order_index',8)
         
         if (self.library_stream_flag=='1'):
-            self.library_picture_index = self.read_ue()
+            self.library_picture_index = self.bsd.read_ue()
         if (self.temporal_id_enable_flag == '1'):
-            self.temporal_id = self.assign_data('temporal_id',3)
+            self.temporal_id = self.bsd.assign_data('temporal_id',3)
             
         if (self.low_delay == '0'):
-            self.picture_output_delay=self.read_ue()
+            self.picture_output_delay=self.bsd.read_ue()
         if (self.low_delay == '1'):
-            self.bbv_check_times=self.read_ue()
+            self.bbv_check_times=self.bsd.read_ue()
             
-        self.progressive_frame = self.assign_data('progressive_frame',1)
+        self.progressive_frame = self.bsd.assign_data('progressive_frame',1)
         if (self.progressive_frame == '0'):
-            self.picture_structure= self.assign_data('picture_structure',1)
-        self.top_field_first= self.assign_data('top_field_first',1)
-        self.repeat_first_field= self.assign_data('repeat_first_field',1)
+            self.picture_structure= self.bsd.assign_data('picture_structure',1)
+        self.top_field_first= self.bsd.assign_data('top_field_first',1)
+        self.repeat_first_field= self.bsd.assign_data('repeat_first_field',1)
         if (self.field_coded_sequence == '1'):
-            self.top_field_picture_flag= self.assign_data('top_field_picture_flag',1)
-            self.reserved_bits= self.assign_data('reserved_bits',1)
+            self.top_field_picture_flag= self.bsd.assign_data('top_field_picture_flag',1)
+            self.reserved_bits= self.bsd.assign_data('reserved_bits',1)
             
-        self.ref_pic_list_set_flag[0]= self.assign_data('ref_pic_list_set_flag[0]',1)
+        self.ref_pic_list_set_flag[0]= self.bsd.assign_data('ref_pic_list_set_flag[0]',1)
         if ( self.ref_pic_list_set_flag[0]=='1'):
             if (int(self.num_ref_pic_list_set[0]) > 1):
-                self.ref_pic_list_set_idx[0]=self.read_ue()
+                self.ref_pic_list_set_idx[0]=self.bsd.read_ue()
         else:
             self.reference_picture_list_set(0, self.num_ref_pic_list_set[0])
         if (self.rpl1_idx_exist_flag=='1'):
-            self.ref_pic_list_set_flag[1]= self.assign_data('ref_pic_list_set_flag[1]',1)
+            self.ref_pic_list_set_flag[1]= self.bsd.assign_data('ref_pic_list_set_flag[1]',1)
         if (self.ref_pic_list_set_flag[1]=='1'):
             if ((self.rpl1_idx_exist_flag=='1') & (int(self.num_ref_pic_list_set[1]) > 1)):
-                self.ref_pic_list_set_idx[1]=self.read_ue()
+                self.ref_pic_list_set_idx[1]=self.bsd.read_ue()
         else:
             self.reference_picture_list_set(1, self.num_ref_pic_list_set[1])
-        self.fixed_picture_qp_flag= self.assign_data('fixed_picture_qp_flag',1)
-        self.picture_qp= self.assign_data('picture_qp',7)
-        self.loop_filter_disable_flag= self.assign_data('loop_filter_disable_flag',1)
+        self.fixed_picture_qp_flag= self.bsd.assign_data('fixed_picture_qp_flag',1)
+        self.picture_qp= self.bsd.assign_data('picture_qp',7)
+        self.loop_filter_disable_flag= self.bsd.assign_data('loop_filter_disable_flag',1)
         if (self.loop_filter_disable_flag == '0'):
-            self.loop_filter_parameter_flag= self.assign_data('loop_filter_parameter_flag',1)
+            self.loop_filter_parameter_flag= self.bsd.assign_data('loop_filter_parameter_flag',1)
             if (self.loop_filter_parameter_flag=='1'):
-                self.alpha_c_offset=self.read_se()
-                self.beta_offset=self.read_se()
-        self.chroma_quant_param_disable_flag= self.assign_data('chroma_quant_param_disable_flag',1)
+                self.alpha_c_offset=self.bsd.read_se()
+                self.beta_offset=self.bsd.read_se()
+        self.chroma_quant_param_disable_flag= self.bsd.assign_data('chroma_quant_param_disable_flag',1)
         
         if (self.chroma_quant_param_disable_flag == '0'):
-            self.chroma_quant_param_delta_cb=self.read_se()
-            self.chroma_quant_param_delta_cr=self.read_se()
+            self.chroma_quant_param_delta_cb=self.bsd.read_se()
+            self.chroma_quant_param_delta_cr=self.bsd.read_se()
              
         if (self.weight_quant_enable_flag=='1'):
-            self.pic_weight_quant_enable_flag= self.assign_data('pic_weight_quant_enable_flag',1)
+            self.pic_weight_quant_enable_flag= self.bsd.assign_data('pic_weight_quant_enable_flag',1)
             if (self.pic_weight_quant_enable_flag=='1'):
-                self.pic_weight_quant_data_index= self.assign_data('pic_weight_quant_data_index',2)
+                self.pic_weight_quant_data_index= self.bsd.assign_data('pic_weight_quant_data_index',2)
                 if (self.pic_weight_quant_data_index == '01'):
-                    self.reserved_bits= self.assign_data('reserved_bits',1)
-                    self.weight_quant_param_index = self.assign_data('weight_quant_param_index',2)
-                    self.weight_quant_model = self.assign_data('weight_quant_model',2)
+                    self.reserved_bits= self.bsd.assign_data('reserved_bits',1)
+                    self.weight_quant_param_index = self.bsd.assign_data('weight_quant_param_index',2)
+                    self.weight_quant_model = self.bsd.assign_data('weight_quant_model',2)
                     if (self.weight_quant_param_index == '01'):
                         for i in range(6):
-                            self.weight_quant_param_delta1[i] = self.read_se()
+                            self.weight_quant_param_delta1[i] = self.bsd.read_se()
                     if (self.weight_quant_param_index == '10'):
                          for i in range(6):
-                            weight_quant_param_delta2[i] = self.read_se()
+                            weight_quant_param_delta2[i] = self.bsd.read_se()
                 elif(self.pic_weight_quant_data_index == '10'):
                     self.weight_quant_matrix()
         if (self.adaptive_leveling_filter_enable_flag=='1'):#AlfEnableFlag
             for compIdx in range(3):
-                self.picture_alf_enable_flag[compIdx] = self.assign_data('self.picture_alf_enable_flag[compIdx]',1)
+                self.picture_alf_enable_flag[compIdx] = self.bsd.assign_data('self.picture_alf_enable_flag[compIdx]',1)
             if (self.picture_alf_enable_flag[0] == '1' | self.picture_alf_enable_flag[1] == '1' | self.picture_alf_enable_flag[2] == '1'):#picture_alf_enable_flag
                 self.alf_parameter_set()
         #self.next_start_code()
         print('position....................',self.pointer_position)
 
-    def run(self):
-        if(self.get_read_data(32)==dict['video_sequence_start_code']):
-            print('position....................',self.pointer_position)
-            self.video_sequence_start_code = self.assign_data('video_sequence_start_code',32)
-            self.profile_id = self.assign_data('profile_id',8)
-            self.level_id = self.assign_data('level_id',8)
-            self.progressive_sequence = self.assign_data('progressive_sequence',1)
-            self.field_coded_sequence = self.assign_data('field_coded_sequence',1)
-            self.library_stream_flag = self.assign_data('library_stream_flag',1)
-            if(self.library_stream_flag == '0'):
-                self.library_picture_enable_flag = self.assign_data('library_picture_enable_flag',1)
-                if(self.library_picture_enable_flag=='1'):
-                    self.duplicate_seq_header_flag = self.assign_data('duplicate_seq_header_flag',1)
-            self.marker_bit = self.assign_data('marker_bit',1)
-            self.horizontal_size = self.assign_data('horizontal_size',14)
-            self.marker_bit = self.assign_data('marker_bit',1)
-            self.vertical_size = self.assign_data('vertical_size',14)
-            self.chroma_format = self.assign_data('chroma_format',2)
-            self.sample_precision = self.assign_data('sample_precision',3)
-            if ((self.profile_id) == '22'):
-                self.encoding_precision = self.assign_data('encoding_precision',3)
-            self.marker_bit = self.assign_data('marker_bit',1)
-            self.aspect_ratio = self.assign_data('aspect_ratio',4)
-            self.frame_rate_code = self.assign_data('frame_rate_code',4)
-            self.marker_bit = self.assign_data('marker_bit',1)
-            self.bit_rate_lower = self.assign_data('bit_rate_lower',18)
-            self.marker_bit = self.assign_data('marker_bit',1)
-            self.bit_rate_upper = self.assign_data('bit_rate_upper',12)
-            self.low_delay = self.assign_data('low_delay',1)
-            self.temporal_id_enable_flag = self.assign_data('temporal_id_enable_flag',1)
-            self.marker_bit = self.assign_data('marker_bit',1)
-            self.bbv_buffer_size = self.assign_data('bbv_buffer_size',18)
-            self.marker_bit = self.assign_data('marker_bit',1)
-            self.max_dpb_minus1 = self.assign_data('max_dpb_minus1',4)
-            self.rpl1_idx_exist_flag = self.assign_data('rpl1_idx_exist_flag',1)
-            self.rpl1_same_as_rpl0_flag = self.assign_data('rpl1_same_as_rpl0_flag',1)
-            self.marker_bit = self.assign_data('marker_bit',1)
-            self.num_ref_pic_list_set[0] = self.read_ue()
-            
-            print('position1....................',self.pointer_position)
-            print('num_ref_pic_list_set[0]  ',((self.num_ref_pic_list_set[0])))
-            self.NumOfRefPic[0] = [0 for i in range(self.num_ref_pic_list_set[0])]
-            #=======================================
-            for i in range(int(self.num_ref_pic_list_set[0])):
-                self.reference_picture_list_set(0,i)
-            if(self.rpl1_same_as_rpl0_flag=='0'):
-                self.num_ref_pic_list_set[1] = self.read_ue()
-                print('num_ref_pic_list_set[1]    ',self.num_ref_pic_list_set[1])
-                self.NumOfRefPic[1] = [0 for i in range(self.num_ref_pic_list_set[1])]
-                for i in range(int(self.num_ref_pic_list_set[1])):
-                    self.reference_picture_list_set(1,i)
-            
-            self.num_ref_default_active_minus1[0] = self.read_ue()
-            print('num_ref_default_active_minus1[0]  ',((self.num_ref_default_active_minus1[0])))
-            self.num_ref_default_active_minus1[1] = self.read_ue()
-            print('num_ref_default_active_minus1[1]  ',((self.num_ref_default_active_minus1[1])))
-            self.log2_lcu_size_minus2 = self.assign_data('log2_lcu_size_minus2',3)
-            self.log2_min_cu_size_minus2 = self.assign_data('log2_min_cu_size_minus2',2)
-            self.log2_max_part_ratio_minus2 = self.assign_data('log2_max_part_ratio_minus2',2)
-            self.max_split_times_minus6 = self.assign_data('max_split_times_minus6',3)
-            self.log2_min_qt_size_minus2 = self.assign_data('log2_min_qt_size_minus2',3)
-            self.log2_max_bt_size_minus2 = self.assign_data('log2_max_bt_size_minus2',3)
-            self.log2_max_eqt_size_minus3 = self.assign_data('log2_max_eqt_size_minus3',2)
-            self.marker_bit = self.assign_data('marker_bit',1)
-            self.weight_quant_enable_flag = self.assign_data('weight_quant_enable_flag',1)
-            
-            if(self.weight_quant_enable_flag=='1'):
-                self.load_seq_weight_quant_data_flag = self.assign_data('load_seq_weight_quant_data_flag',1)
-                if(self.load_seq_weight_quant_data_flag=='1'):
-                    self.weight_quant_matrix()
-            self.secondary_transform_enable_flag = self.assign_data('secondary_transform_enable_flag',1)
-            self.sample_adaptive_offset_enable_flag = self.assign_data('sample_adaptive_offset_enable_flag',1)
-            self.adaptive_leveling_filter_enable_flag = self.assign_data('adaptive_leveling_filter_enable_flag',1)
-            self.affine_enable_flag = self.assign_data('affine_enable_flag',1)
-            self.smvd_enable_flag = self.assign_data('smvd_enable_flag',1)
-            self.ipcm_enable_flag = self.assign_data('ipcm_enable_flag',1)
-            self.amvr_enable_flag = self.assign_data('amvr_enable_flag',1)
-            self.num_of_hmvp_cand = self.assign_data('num_of_hmvp_cand',4)
-            self.umve_enable_flag = self.assign_data('umve_enable_flag',1)
-            if((self.num_of_hmvp_cand=='1') & (self.amvr_enable_flag=='1')):
-                self.emvr_enable_flag = self.assign_data('emvr_enable_flag',1)
-            self.ipf_enable_flag = self.assign_data('ipf_enable_flag',1)
-            self.tscpm_enable_flag = self.assign_data('tscpm_enable_flag',1)
-            self.marker_bit = self.assign_data('marker_bit',1)
-            self.dt_enable_flag = self.assign_data('dt_enable_flag',1)
-            if(self.dt_enable_flag=='1'):
-                self.log2_max_dt_size_minus4 = self.assign_data('log2_max_dt_size_minus4',2)
-            self.pbt_enable_flag = self.assign_data('pbt_enable_flag',1)
-            if(self.low_delay=='0'):
-                self.output_reorder_delay = self.assign_data('output_reorder_delay',5)
-            self.cross_patch_loopfilter_enable_flag = self.assign_data('cross_patch_loopfilter_enable_flag',1)
-            self.ref_colocated_patch_flag = self.assign_data('ref_colocated_patch_flag',1)
-            self.stable_patch_flag = self.assign_data('stable_patch_flag',1)
-            if(self.stable_patch_flag=='1'):
-                self.uniform_patch_flag = self.assign_data('uniform_patch_flag',1)
-                if(self.uniform_patch_flag=='1'):
-                    self.marker_bit = self.assign_data('marker_bit',1)
-                    self.patch_width_minus1 = self.read_ue()
-                    print('patch_width_minus1  ',((self.patch_width_minus1)))
-                    self.patch_height_minus1 = self.read_ue()
-                    print('patch_height_minus1  ',((self.patch_height_minus1)))
-            self.reserved_bits = self.assign_data('reserved_bits',2)
-            print('position....................',self.pointer_position)
-            self.pop_read_data(12)
+    
             self.intra_picture_header()
             print('position....................',self.pointer_position)
             self.pop_read_data(32)
@@ -542,8 +546,8 @@ class sequence_header:
     def reference_picture_list_set(self,mlist,rpls):
         print('in func reference_picture_list_set')
         if(self.library_picture_enable_flag=='1'):
-            self.reference_to_library_enable_flag = self.assign_data('reference_to_library_enable_flag',1)
-        self.NumOfRefPic[mlist][rpls] = self.read_ue()
+            self.reference_to_library_enable_flag = self.bsd.assign_data('reference_to_library_enable_flag',1)
+        self.NumOfRefPic[mlist][rpls] = self.bsd.read_ue()
         print('NumOfRefPic[mlist][rpls]  ',(self.NumOfRefPic[mlist][rpls]))
         #==================malloc array
         self.library_index_flag[mlist] = [[0 for k in range(self.NumOfRefPic[mlist][rpls])] for j in range(self.num_ref_pic_list_set[mlist])]
@@ -553,15 +557,15 @@ class sequence_header:
         
         for i in range((self.NumOfRefPic[mlist][rpls])):
             if (self.reference_to_library_enable_flag=='1'):
-                self.library_index_flag[mlist][rpls][i] = int(self.assign_data('library_index_flag[mlist][rpls][i]',1))
+                self.library_index_flag[mlist][rpls][i] = int(self.bsd.assign_data('library_index_flag[mlist][rpls][i]',1))
             if(self.library_index_flag[mlist][rpls][i]==1):
-                self.referenced_library_picture_index[mlist][rpls][i] = self.read_ue()
+                self.referenced_library_picture_index[mlist][rpls][i] = self.bsd.read_ue()
                 print('referenced_library_picture_index[mlist][rpls][i]   ',self.referenced_library_picture_index[mlist][rpls][i])
             else:
-                self.abs_delta_doi[mlist][rpls][i] = self.read_ue()
+                self.abs_delta_doi[mlist][rpls][i] = self.bsd.read_ue()
                 print('abs_delta_doi[mlist][rpls][i]   ',self.abs_delta_doi[mlist][rpls][i])
                 if(int(self.abs_delta_doi[mlist][rpls][i]) > 0):
-                    self.sign_delta_doi[mlist][rpls][i] = self.assign_data('sign_delta_doi[mlist][rpls][i]',1)
+                    self.sign_delta_doi[mlist][rpls][i] = self.bsd.assign_data('sign_delta_doi[mlist][rpls][i]',1)
         print('out func reference_picture_list_set')        
 
     # 自定义加权量化矩阵定义
@@ -573,7 +577,7 @@ class sequence_header:
             self.WeightQuantMatrix8x8= [[0 for j in range(0,WQMSize)] for i in range(0,WQMSize)]
             for i in range(WQMSize):
                 for j in range(WQMSize):
-                    weight_quant_coeff = self.read_ue()
+                    weight_quant_coeff = self.bsd.read_ue()
                     if(sizeId == 0):
                         self.WeightQuantMatrix4x4[i][j] = weight_quant_coeff
                     else:
