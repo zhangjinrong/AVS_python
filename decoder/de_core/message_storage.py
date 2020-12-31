@@ -17,6 +17,8 @@ dict =  {
     'patch_start_code2':'0000000000000000000000000000007F',#00-7F is patch_start_code
     '8F': 'patch_end_code'
     }
+
+#暂时无用
 class video_sequence:
     def __init__(self,input_file):
         self.data_file = input_file
@@ -55,15 +57,63 @@ class video_sequence:
         return string
         #return hex(int(string.hex(),16))
         #return string.hex()
-        
+#比特流信息
+class bitstream_data:
+    def __init__(self,input_decoder_file):
+        self.pointer_position = 0
+        self.data_file = input_decoder_file
 
+    def pop_read_data(self,read_length):
+        string = self.data_file[self.pointer_position:self.pointer_position+read_length]
+        self.pointer_position = self.pointer_position + read_length
+        return string
+
+    def get_read_data(self,read_length):
+        string = self.data_file[self.pointer_position:self.pointer_position+read_length]
+        return string
+
+    def read_ue(self):
+        string_size=1
+        while(self.get_read_data(1)=='0'):
+            string_size = string_size+1
+            self.pop_read_data(1)
+        return (self.str_to_int(self.pop_read_data(string_size))-1)
+
+    def read_se(self):
+        string_size=1
+        while(self.get_read_data(1)=='0'):
+            string_size = string_size+1
+            self.pop_read_data(1)
+        code_num = self.str_to_int(self.pop_read_data(string_size))-1
+        if(code_num%2==0):
+            return 0-code_num/2
+        else:
+            return code_num/2+1
+
+    def str_to_int(self,str):
+        data = 0
+        for i in range(len(str)):
+            data = data*2 + int(str[i])
+        return data
+
+    def str_to_hex(self,str_input):
+        data_string=''
+        if(((len(str_input)%4)==0)&(len(str_input)>0)):
+            for i in range(int(len(str_input)/4)):
+                data = hex(int(str_input[i*4:i*4+4],2))
+                data_string = data_string + data[-1]
+        else:
+            data_string = str_input
+        return data_string
+
+    def assign_data(self,str_value,len_data):
+        data_value = self.str_to_hex(self.pop_read_data(len_data))
+        print(str_value,'  ',data_value)
+        return data_value
 #序列头定义
 class sequence_header:
-    def __init__(self,input_file,pointer_position):
-        self.List_ReferencePictureListSet = []
-        self.data_file = input_file
-        self.pointer_position = pointer_position
-        self.video_sequence_start_code=0#0x000001B0
+    def __init__(self,bitstream_data):
+        self.bsd = bitstream_data
         self.profile_id=0#档次标号
         self.level_id=0#级别标号
         self.progressive_sequence=0
@@ -71,29 +121,21 @@ class sequence_header:
         self.library_stream_flag=0#知识位流标志.值为'1'表示当前位流是知识位流;值为'0'表示当前位流是主位流
         self.library_picture_enable_flag=0#知识图像允许标志.值为'1'表示视频序列中可存在使用知识图像作为参考图像的帧间预测图像;值为'0'表示视频序列中不应存在使用知识图像作为参考图像的帧间预测图像。
         self.duplicate_sequence_header_flag=0#知识位流重复序列头标志.
-        self.marker_bit1=0
         self.horizontal_size=0
-        self.marker_bit2=0
         self.vertical_size=0
         self.chroma_format=0
         self.sample_precision=0
         self.encoding_precision=0
-        self.marker_bit3=0
         self.aspect_ratio=0
         self.frame_rate_code=0
-        self.marker_bit4=0
         self.bit_rate_lower=0
-        self.marker_bit5=0
         self.bit_rate_upper=0
         self.low_delay=0
         self.temporal_id_enable_flag=0
-        self.marker_bit6=0
         self.bbv_buffer_size=0
-        self.marker_bit7=0
         self.max_dpb_minus1=0
         self.rpl1_idx_exist_flag=0
         self.rpl1_same_as_rpl0_flag=0
-        self.marker_bit8=0
         self.num_ref_pic_list_set =[0 for i in range(2)] 
         self.num_ref_default_active_minus1 = [0 for i in range(2)]
         self.log2_lcu_size_minus2=0
@@ -103,7 +145,6 @@ class sequence_header:
         self.log2_min_qt_size_minus2=0
         self.log2_max_bt_size_minus2=0
         self.log2_max_eqt_size_minus3=0
-        self.marker_bit9=0
         self.weight_quant_enable_flag=0
         self.load_seq_weight_quant_data_flag=0
         self.secondary_transform_enable_flag=0
@@ -118,7 +159,6 @@ class sequence_header:
         self.emvr_enable_flag=0
         self.ipf_enable_flag=0
         self.tscpm_enable_flag=0
-        self.marker_bit10=0
         self.dt_enable_flag=0
         self.log2_max_dt_size_minus4=0
         self.pbt_enable_flag=0
@@ -127,10 +167,21 @@ class sequence_header:
         self.ref_colocated_patch_flag =0
         self.stable_patch_flag =0
         self.uniform_patch_flag =0
-        self.marker_bit11 =0
         self.patch_width_minus1 =0
         self.patch_height_minus1=0
         self.reserved_bits=0
+        self.marker_bit =0
+
+#序列头定义
+class sequence_header:
+    def __init__(self,input_file,pointer_position):
+        self.data_file = input_file
+        self.pointer_position = pointer_position
+        self.video_sequence_start_code=0#0x000001B0
+
+
+        
+
         # 参考图像队列配置集定义
         self.reference_to_library_enable_flag = 0
         self.library_index_flag=[0 for i in range(2)]
@@ -178,8 +229,6 @@ class sequence_header:
         #图像数据定义
         self.patch_start_code=0
         self.patch_sao_enable_flag = [0 for i in range(3)]
-
-
 
     def picture_data(self):
         while((self.get_read_data(32) >= dict['patch_start_code1'])&(self.get_read_data(32) <= dict['patch_start_code2'])):#000001+0x00～0x7F(patch_index)
@@ -229,7 +278,6 @@ class sequence_header:
         next_start_code( )
         patch_end_code
 
-
     #在位流中检测是否已达到片的结尾，如果已到达片的结尾，返回TRUE，否则返回FALSE
     def is_end_of_patch(self):
         if(self.byte_aligned()):
@@ -239,7 +287,6 @@ class sequence_header:
             if ((byte_aligned_next_bits(24) == 0x000001) & is_stuffing_pattern( )):
                 return True #片结束
         return False
-
 
     # 字节是否
     def byte_aligned(self):
@@ -301,9 +348,6 @@ class sequence_header:
         self.user_data_start_code=self.assign_data('user_data_start_code',32)
         while (self.get_read_data(24) != '000000000000000000000001'):
             self.user_data=self.assign_data('user_data',8)
-
-
-    
 
     #帧内预测图像头定义
     def intra_picture_header(self):
@@ -536,56 +580,6 @@ class sequence_header:
                         self.WeightQuantMatrix8x8[i][j] = weight_quant_coeff
         print('out func weight_quant_matrix')
     
-    
-
-    def pop_read_data(self,read_length):
-        string = self.data_file[self.pointer_position:self.pointer_position+read_length]
-        self.pointer_position = self.pointer_position + read_length
-        return string
-
-    def get_read_data(self,read_length):
-        string = self.data_file[self.pointer_position:self.pointer_position+read_length]
-        return string
-    def read_ue(self):
-        string_size=1
-        while(self.get_read_data(1)=='0'):
-            string_size = string_size+1
-            self.pop_read_data(1)
-        return (self.str_to_int(self.pop_read_data(string_size))-1)
-    def read_se(self):
-        string_size=1
-        while(self.get_read_data(1)=='0'):
-            string_size = string_size+1
-            self.pop_read_data(1)
-        code_num = self.str_to_int(self.pop_read_data(string_size))-1
-        if(code_num%2==0):
-            return 0-code_num/2
-        else:
-            return code_num/2+1
-
-    def str_to_int(self,str):
-        data = 0
-        for i in range(len(str)):
-            data = data*2 + int(str[i])
-        return data
-
-    def str_to_hex(self,str_input):
-        data_string=''
-        if(((len(str_input)%4)==0)&(len(str_input)>0)):
-            for i in range(int(len(str_input)/4)):
-                data = hex(int(str_input[i*4:i*4+4],2))
-                data_string = data_string + data[-1]
-        else:
-            data_string = str_input
-        return data_string
-    def assign_data(self,str_value,len_data):
-        data_value = self.str_to_hex(self.pop_read_data(len_data))
-        print(str_value,'  ',data_value)
-        return data_value
-
-
-    
-
 '''
 #序列显示扩展定义
 
