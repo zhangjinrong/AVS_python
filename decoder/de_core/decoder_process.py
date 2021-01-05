@@ -29,8 +29,8 @@ class video_sequence:
         #    print('good')
         self.SH = sequence_header(self.bsd)
         self.SHrun(self.SH)
-        self.Intra_PH = intra_picture_header(self.bsd)
-        
+        #self.Intra_PH = intra_picture_header(self.bsd)
+
         #extension_and_user_data(0,self.data_file,self.pointer_position)
         '''
         while((self.get_read_data(32) != dict['video_sequence_end_code']) & (self.get_read_data(32) != dict['video_edit_code'])):
