@@ -21,13 +21,13 @@ dict =  {
 #暂时无用
 class video_sequence:
     def __init__(self,input_file):
-        self.data_file = input_file
-        self.pointer_position = 0
+
+        self.bsd = bitstream_data(input_file)
         self.run()
     def run(self):
         #if(self.get_read_data(32) == dict['video_sequence_start_code']):
         #    print('good')
-        SH = sequence_header(self.data_file,self.pointer_position)
+        SH = sequence_header(self.bsd)
         SH.run()
         #extension_and_user_data(0,self.data_file,self.pointer_position)
         '''
@@ -91,13 +91,19 @@ class bitstream_data:
         return data
 
     def assign_data(self,str_value,len_data):
-        data_value = self.str_to_int(self.get_read_data(len_data))
+        data_value = self.str_to_int(self.pop_read_data(len_data))
         data_value = hex(data_value)
         print(str_value,'  ',data_value)
         if((str_value=='marker_bit')&(data_value==0)):
             print('marker_bit wrong!')
         return data_value
-    
+    # 字节是否对齐
+    def byte_aligned(self):
+        if((self.pointer_position%8)==0):
+            return 1
+        else:
+            return 0
+
     #在位流中寻找下一个起始码，将位流指针指向起始码前缀的第一个二进制位。
     def next_start_code(self):
         self.stuffing_bit=self.assign_data('stuffing_bit',1)#1
@@ -231,6 +237,7 @@ class sequence_header:
             self.rpl1_same_as_rpl0_flag = self.bsd.assign_data('rpl1_same_as_rpl0_flag',1)
             self.marker_bit = self.bsd.assign_data('marker_bit',1)
             self.num_ref_pic_list_set[0] = self.bsd.read_ue('num_ref_pic_list_set[0]')
+            
             #self.NumOfRefPic[0] = [0 for i in range(self.num_ref_pic_list_set[0])]
             #=======================================
             for i in range(int(self.num_ref_pic_list_set[0])):
@@ -243,11 +250,11 @@ class sequence_header:
             else:#rpl1_same_as_rpl1和rpl1_same_as_rpl0的值一样
                 self.num_ref_pic_list_set[1] = self.num_ref_pic_list_set[0] 
                 for i in range(int(self.num_ref_pic_list_set[1])):
-                    sqh.rpls_l1[i].reference_to_library_enable_flag = sqh.rpls_l0[i].reference_to_library_enable_flag
-                    sqh.rpls_l1[i].ref_pic_num = sqh.rpls_l0[i].ref_pic_num
-                    for j in range(sqh.rpls_l1[i].ref_pic_num):
-                        sqh.rpls_l1[i].library_index_flag[j] = sqh.rpls_l0[i].library_index_flag[j]
-                        sqh.rpls_l1[i].ref_pics_ddoi[j] = sqh.rpls_l0[i].ref_pics_ddoi[j]
+                    self.rpls_l1[i].reference_to_library_enable_flag = self.rpls_l0[i].reference_to_library_enable_flag
+                    self.rpls_l1[i].ref_pic_num = self.rpls_l0[i].ref_pic_num
+                    for j in range(self.rpls_l1[i].ref_pic_num):
+                        self.rpls_l1[i].library_index_flag[j] = self.rpls_l0[i].library_index_flag[j]
+                        self.rpls_l1[i].ref_pics_ddoi[j] = self.rpls_l0[i].ref_pics_ddoi[j]
 
             self.num_ref_default_active_minus1[0] = self.bsd.read_ue('num_ref_default_active_minus1[0]')
             self.num_ref_default_active_minus1[1] = self.bsd.read_ue('num_ref_default_active_minus1[1]')
@@ -299,7 +306,9 @@ class sequence_header:
                     self.patch_width_minus1 = self.bsd.read_ue('patch_width_minus1  ')
                     self.patch_height_minus1 = self.bsd.read_ue('patch_height_minus1  ')
             self.reserved_bits = self.bsd.assign_data('reserved_bits',2)
-            self.bsd.next_start_code()
+            #self.bsd.next_start_code()
+            print(self.bsd.pointer_position)
+            
     
     # 参考图像队列配置集定义
     def reference_picture_list_set(self,rpl):
@@ -318,11 +327,11 @@ class sequence_header:
             if((self.library_picture_enable_flag)&(rpl.reference_to_library_enable_flag)):
                 rpl.library_index_flag[0] = self.bsd.assign_data('library_index_flag',1)
             if(self.library_picture_enable_flag & rpl.library_index_flag[0]):
-                rpl.ref_pics_ddoi[0] = self.bsd.read_ue()
+                rpl.ref_pics_ddoi[0] = self.bsd.read_ue('ref_pics_ddoi')
             else:
-                rpl.ref_pics_ddoi[0] = self.bsd.read_ue()
+                rpl.ref_pics_ddoi[0] = self.bsd.read_ue('ref_pics_ddoi')
                 if (rpl.ref_pics_ddoi[0] != 0):
-                    rpl.ref_pics_ddoi[0] *= 1 - (self.bsd.assign_data('ref_pics_ddoi',1) << 1)
+                    rpl.ref_pics_ddoi[0] =rpl.ref_pics_ddoi[0] * (1 - (int(self.bsd.assign_data('ref_pics_ddoi',1),10) *2))
                 ddoi_base = rpl.ref_pics_ddoi[0]
 
         for i in range(rpl.ref_pic_num-1):
@@ -501,7 +510,7 @@ class sequence_header:
     #扩展数据定义
     def extension_data(self,i):
         print('extension_data begin')
-        '''
+        
         while ((self.get_read_data(32) == "extension_start_code")):#0x000001B5
             self.extension_start_code = self.bsd.assign_data('intra_picture_start_code',32)
             if(i==0):
@@ -536,7 +545,7 @@ class sequence_header:
                 else:
                     while (self.get_read_data(24) != '0000 0000 0000 0000 0000 0001'):
                         self.reserved_extension_data_byte
-        '''
+        
     #用户数据定义
     def user_data(self):
         print('user_data begin')
@@ -630,8 +639,7 @@ class sequence_header:
             self.pop_read_data(32)
             self.extension_and_user_data(1)
 
-'''
-'''
+
 #序列显示扩展定义
 
 class sequence_display_extension:
@@ -1396,6 +1404,4 @@ class is_stuffing_pattern:
             return True
         else:
             return False
-
-
 '''
