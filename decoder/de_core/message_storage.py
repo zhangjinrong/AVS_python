@@ -100,11 +100,11 @@ class bitstream_data:
     
     #在位流中寻找下一个起始码，将位流指针指向起始码前缀的第一个二进制位。
     def next_start_code(self):
-            stuffing_bit #1
-        while (~ byte_aligned()):
-            stuffing_bit#0
-        while (next_bits(24) != '0000 0000 0000 0000 0000 0001'):#起始码前缀
-            stuffing_byte#00000000
+        self.stuffing_bit=self.assign_data('stuffing_bit',1)#1
+        while (~ self.byte_aligned()):
+            self.stuffing_bit=self.assign_data('stuffing_bit',1)#0
+        while (self.get_read_data(24) != '000000000000000000000001'):#起始码前缀
+            self.stuffing_byte=self.assign_data('stuffing_byte',8)#0#00000000
 
 # 参考图像结构
 class rpl:
