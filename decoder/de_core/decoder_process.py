@@ -29,9 +29,12 @@ class video_sequence:
         #    print('good')
         self.SH = sequence_header(self.bsd)
         self.SHrun(self.SH)
-        #self.Intra_PH = intra_picture_header(self.bsd)
-
-        #extension_and_user_data(0,self.data_file,self.pointer_position)
+        self.extension_and_user_data(0)
+        IPH = intra_picture_header(self.bsd)
+        pic_header=com_pic_header()
+        self.IPH_run(IPH,pic_header)
+        self.extension_and_user_data(1)
+        
         '''
         while((self.get_read_data(32) != dict['video_sequence_end_code']) & (self.get_read_data(32) != dict['video_edit_code'])):
             sequence_header(self.data_file,self.pointer_position)
@@ -153,15 +156,299 @@ class video_sequence:
                 self.SH.uniform_patch_flag = self.bsd.assign_data('uniform_patch_flag',1)
                 if(self.SH.uniform_patch_flag==1):
                     self.SH.marker_bit = self.bsd.assign_data('marker_bit',1)
-                    self.SH.patch_width_minus1 = self.bsd.read_ue('patch_width_minus1  ')
-                    self.SH.patch_height_minus1 = self.bsd.read_ue('patch_height_minus1  ')
+                    self.SH.patch_width_minus1 = self.bsd.read_ue('patch_width_minus1')
+                    self.SH.patch_height_minus1 = self.bsd.read_ue('patch_height_minus1')
             self.SH.reserved_bits = self.bsd.assign_data('reserved_bits',2)
             self.bsd.next_start_code()
             print(self.bsd.pointer_position)
-            self.extension_and_user_data(0)
             
+
+    #解析帧内和帧间图像
+    def IPH_run(self,IPH,pic_header):
+        print('intra_inter_picture_header begin')
+        start_code = self.bsd.assign_data('intra_inter_picture_start_code',32)
+        if(start_code==dict['intra_picture_start_code']):
+            pic_header.slice_type = 'SLICE_I'
+        else:
+            pic_header.random_access_decodable_flag = self.bsd.assign_data('random_access_decodable_flag',1)
+        bbv_delay1 = self.bsd.assign_data('bbv_delay1',8)
+        bbv_delay2 = self.bsd.assign_data('bbv_delay2',8)
+        bbv_delay3 = self.bsd.assign_data('bbv_delay3',8)
+        bbv_delay4 = self.bsd.assign_data('bbv_delay4',8)
+        pic_header.bbv_delay = (bbv_delay1 << 24) |(bbv_delay2 << 16) |(bbv_delay3 << 8) |bbv_delay4
+        if(start_code==dict['inter_picture_start_code']):
+            val = self.bsd.assign_data('val',2)
+            if(val==1):
+                pic_header.slice_type = 'SLICE_P'
+            else:
+                pic_header.slice_type = 'SLICE_B'
+        if(start_code==dict['intra_picture_start_code']):
+            pic_header.time_code_flag = self.bsd.assign_data('time_code_flag',1)
+            if (pic_header.time_code_flag == 1):
+                pic_header.time_code = self.bsd.assign_data('time_code',24)
+        pic_header.decode_order_index = self.bsd.assign_data('time_code',8)
+        pic_header.library_picture_index = -1
+        if(start_code==dict['intra_picture_start_code']):
+            if (sqh.library_stream_flag):
+                pic_header.library_picture_index = self.bsd.read_ue('library_picture_index')
+        if (sqh.temporal_id_enable_flag == 1):
+            pic_header.temporal_id = self.bsd.assign_data('temporal_id',3)
+        if (sqh.low_delay == 0):
+            pic_header.picture_output_delay = self.bsd.read_ue('picture_output_delay')
+            pic_header.bbv_check_times = 0
+        else:
+            pic_header.picture_output_delay = 0
+            pic_header.bbv_check_times =  self.bsd.read_ue('bbv_check_times')
+        #下面信息不是用在解码器中
+        pic_header.progressive_frame = self.bsd.assign_data('progressive_frame',1)
+        if (pic_header.progressive_frame == 0):
+            pic_header.picture_structure = self.bsd.assign_data('picture_structure',1)
+        else:
+            pic_header.picture_structure = 1
+        pic_header.top_field_first = self.bsd.assign_data('top_field_first',1)
+        pic_header.repeat_first_field = self.bsd.assign_data('repeat_first_field',1)
+        if (sqh.field_coded_sequence == 1):
+            pic_header.top_field_picture_flag = self.bsd.assign_data('top_field_picture_flag',1)
+            self.bsd.assign_data('reserved_bits',1)        
+        #上面信息不是用在解码器中
+        if (~sqh.library_stream_flag):
+            if (pic_header.decode_order_index < g_DOIPrev):
+                g_CountDOICyCleTime = g_CountDOICyCleTime+1
+            g_DOIPrev = pic_header.decode_order_index
+            pic_header.dtr = pic_header.decode_order_index + (256*g_CountDOICyCleTime) + pic_header.picture_output_delay - sqh.output_reorder_delay
+        else:
+            pic_header.dtr = pic_header.decode_order_index + (256*g_CountDOICyCleTime) + pic_header.picture_output_delay - sqh.output_reorder_delay
+        
+        pic_header.poc = pic_header.dtr
+        pic_header.ref_pic_list_sps_flag[0] = self.bsd.assign_data('ref_pic_list_sps_flag',1)
+        if (pic_header.ref_pic_list_sps_flag[0]):
+            if (sqh.rpls_l0_num):
+                if (sqh.rpls_l0_num > 1):
+                    pic_header.rpl_l0_idx = self.bsd.read_ue('rpl_l0_idx')
+                else:#如果sps只有1个参考图像,不需要索引
+                    pic_header.rpl_l0_idx = 0
+                #拷贝rpl信息
+                memcpy(&pic_header->rpl_l0, &sqh->rpls_l0[pic_header->rpl_l0_idx], sizeof(pic_header->rpl_l0));
+                pic_header.rpl_l0.poc = pic_header.poc
+        else：
+            self.reference_picture_list_set(&pic_header.rpl_l0)
+            pic_header.rpl_l0.poc = pic_header.poc
+
+        if(sqh.rpl1_index_exist_flag):
+            pic_header.ref_pic_list_sps_flag[1] = self.bsd.assign_data('ref_pic_list_sps_flag[1]',1)
+        else:
+            pic_header.ref_pic_list_sps_flag[1] = pic_header.ref_pic_list_sps_flag[0]
+
+        if (pic_header.ref_pic_list_sps_flag[1]):
+            if ((sqh.rpls_l1_num > 1) & sqh.rpl1_index_exist_flag):
+                pic_header.rpl_l1_idx = self.bsd.read_ue()
+            elif (~sqh.rpl1_index_exist_flag):
+                pic_header.rpl_l1_idx = pic_header.rpl_l0_idx
+            else：#如果sps只有1个参考像素,不需要索引
+                pic_header。rpl_l1_idx = 0
+
+            memcpy(&pic_header->rpl_l1, &sqh->rpls_l1[pic_header->rpl_l1_idx], sizeof(pic_header->rpl_l1));
+            pic_header.rpl_l1.poc = pic_header.poc
+        else:
+            self.reference_picture_list_set(&pic_header.rpl_l1)
+            pic_header.rpl_l1.poc = pic_header.poc
+        #帧间模式
+        if (pic_header.slice_type != 'SLICE_I'):
+            pic_header.num_ref_idx_active_override_flag = self.bsd.assign_data('num_ref_idx_active_override_flag',1)
+            if (pic_header.num_ref_idx_active_override_flag):
+                pic_header.rpl_l0.ref_pic_active_num = self.bsd.read_ue('rpl_l0.ref_pic_active_num') + 1
+                if (pic_header.slice_type == 'SLICE_P'):
+                    pic_header.rpl_l1.ref_pic_active_num = 0
+                elif (pic_header.slice_type == 'SLICE_B'):
+                    pic_header.rpl_l1.ref_pic_active_num = self.bsd.read_ue('rpl_l1.ref_pic_active_num') + 1
+            else:
+                pic_header.rpl_l0.ref_pic_active_num = sqh.num_ref_default_active_minus1[0]+1
+                if (pic_header.slice_type == 'SLICE_P'):
+                  pic_header.rpl_l1.ref_pic_active_num = 0
+                else:
+                  pic_header.rpl_l1.ref_pic_active_num = sqh.num_ref_default_active_minus1[1] + 1
+        if (pic_header.slice_type == 'SLICE_I'):
+            pic_header.rpl_l0.ref_pic_active_num = 0
+            pic_header.rpl_l1.ref_pic_active_num = 0
+        pic_header.is_RLpic_flag = 0
+        if (pic_header.slice_type != 'SLICE_I'):
+            only_ref_libpic_flag = 1
+            for i in range(pic_header.rpl_l0.ref_pic_active_num):
+                if (~pic_header.rpl_l0.library_index_flag[i]):
+                    only_ref_libpic_flag = 0
+                    break
+            if (only_ref_libpic_flag):
+                for i in range(pic_header.rpl_l1.ref_pic_active_num):
+                    if (~pic_header.rpl_l1.library_index_flag[i]):
+                        only_ref_libpic_flag = 0
+                        break
+            pic_header.is_RLpic_flag = only_ref_libpic_flag
+        pic_header.fixed_picture_qp_flag = self.bsd.assign_data('fixed_picture_qp_flag',1)
+        pic_header.picture_qp = self.bsd.assign_data('picture_qp',7)
+        #保留位只出现在帧间预测中
+        if( pic_header.slice_type != 'SLICE_I' & !(pic_header.slice_type == 'SLICE_B' & pic_header.picture_structure == 1)):
+            self.bsd.assign_data('reserved_bits',1)
+        #dec_eco_DB_param
+        pic_header.loop_filter_disable_flag = self.bsd.assign_data('loop_filter_disable_flag',1)
+        if (pic_header.loop_filter_disable_flag == 0):
+            pic_header.loop_filter_parameter_flag = self.bsd.assign_data('loop_filter_parameter_flag',1)
+            if (pic_header.loop_filter_parameter_flag):
+                pic_header.alpha_c_offset = self.bsd.read_se('alpha_c_offset')
+                pic_header.beta_offset = self.bsd.read_se('beta_offset')
+            else:
+                pic_header.alpha_c_offset = 0
+                pic_header.beta_offset = 0
+        pic_header.chroma_quant_param_disable_flag = self.bsd.assign_data('chroma_quant_param_disable_flag',1)
+        if (pic_header.chroma_quant_param_disable_flag == 0):
+            pic_header.chroma_quant_param_delta_cb = self.bsd.read_se('chroma_quant_param_delta_cb')
+            pic_header.chroma_quant_param_delta_cr = self.bsd.read_se('chroma_quant_param_delta_cr')
+        else:
+            pic_header.chroma_quant_param_delta_cb = pic_header.chroma_quant_param_delta_cr = 0
+        if (sqh.wq_enable):
+            pic_header.pic_wq_enable = self.bsd.assign_data('pic_wq_enable',1)
+            if (pic_header.pic_wq_enable):
+                pic_header.pic_wq_data_idx = self.bsd.assign_data('pic_wq_data_idx',2)
+                if (pic_header.pic_wq_data_idx == 0):
+                    memcpy(pic_header.wq_4x4_matrix, sqh.wq_4x4_matrix, sizeof(sqh.wq_4x4_matrix));
+                    memcpy(pic_header.wq_8x8_matrix, sqh.wq_8x8_matrix, sizeof(sqh.wq_8x8_matrix));
+                elif (pic_header.pic_wq_data_idx == 1):
+                    delta = 0
+                    self.bsd.assign_data('reserved_bits',1)
+                    pic_header.wq_param = self.bsd.assign_data('wq_param',2) #weight_quant_param_index
+                    pic_header.wq_model = self.bsd.assign_data('wq_model',2) #weight_quant_model
+                    if (pic_header.wq_param == 0):
+                        memcpy(pic_header.wq_param_vector, tab_wq_param_default[1], sizeof(pic_header.wq_param_vector))
+                    elif (pic_header.wq_param == 1):
+                        for i in range(6):
+                            delta = self.bsd.read_se('delta')
+                            pic_header.wq_param_vector[i] = delta + tab_wq_param_default[0][i]
+                    else:
+                        for i in range(6):
+                            delta = self.bsd.read_se('delta')
+                            pic_header.wq_param_vector[i] = delta + tab_wq_param_default[1][i]
+                    set_pic_wq_matrix_by_param(pic_header->wq_param_vector, pic_header->wq_model, pic_header->wq_4x4_matrix, pic_header->wq_8x8_matrix);
+                else:
+                    self.weight_quant_matrix(pic_header.wq_4x4_matrix, pic_header.wq_8x8_matrix)
+            else:
+                init_pic_wq_matrix(pic_header.wq_4x4_matrix, pic_header.wq_8x8_matrix)
+        else:
+            pic_header.pic_wq_enable = 0
+            init_pic_wq_matrix(pic_header.wq_4x4_matrix, pic_header.wq_8x8_matrix)
+
+        if (pic_header.tool_alf_on):
+            # 解码ALF flag和ALF coeff 
+            self.dec_eco_ALF_param(pic_header)
+        else:
+            memset( pic_header->pic_alf_on, 0, N_C * sizeof( int ) )
+        if (pic_header.slice_type != SLICE_I & sqh.affine_enable_flag):
+            pic_header.affine_subblock_size_idx = com_bsr_read(bs, 1)
+      
+        self.bsd.next_start_code()
+        print('position....................',self.bsd.pointer_position)
+
+
+    def dec_eco_ALF_param(self,pic_header):
+        m_alfPictureParam = pic_header.m_alfPictureParam
+        pic_alf_on = pic_header.pic_alf_on
+        
+        pic_alf_on[Y_C] = self.bsd.assign_data('pic_alf_on[Y_C]',1)
+        pic_alf_on[U_C] = self.bsd.assign_data('pic_alf_on[U_C]',1)
+        pic_alf_on[V_C] = self.bsd.assign_data('pic_alf_on[V_C]',1)
+
+        m_alfPictureParam[Y_C].alf_flag = pic_alf_on[Y_C]
+        m_alfPictureParam[U_C].alf_flag = pic_alf_on[U_C]
+        m_alfPictureParam[V_C].alf_flag = pic_alf_on[V_C]
+        if (pic_alf_on[Y_C] | pic_alf_on[U_C] | pic_alf_on[V_C]):
+            for compIdx in range(N_C):
+                if (pic_alf_on[compIdx]):    
+                    self.dec_eco_AlfCoeff(m_alfPictureParam[compIdx])
+                
+    def dec_eco_AlfCoeff(self,Alfp):
+        pos = 0
+        f = 0
+        symbol = 0
+        pre_symbole = 0
+        numCoeff = 9
+        if((Alfp.componentID==U_C)|(Alfp.componentID==V_C)):
+            for pos in range(numCoeff):
+                Alfp.coeffmulti[0][pos] = self.bsd.read_se('coeffmulti[0][pos]')
+        elif(Alfp.componentID==Y_C):
+            Alfp.filters_per_group = self.bsd.read_ue('filters_per_group')
+            Alfp.filters_per_group = Alfp.filters_per_group + 1
+            memset(Alfp->filterPattern, 0, 16 * sizeof(int))
+            pre_symbole = 0
+            symbol = 0
+            for f in range(Alfp.filters_per_group)):
+                if (f > 0):
+                    if (Alfp.filters_per_group != 16):
+                        symbol = self.bsd.read_ue('symbol')
+                    else:
+                        symbol = 1
+                    
+                    Alfp.filterPattern[symbol + pre_symbole] = 1
+                    pre_symbole = symbol + pre_symbole
+                for pos in range(numCoeff):
+                    Alfp.coeffmulti[f][pos] = self.bsd.read_se('coeffmulti[f][pos]')
+        else:
+            print("Not a legal component ID\n")
+    #图像数据定义
+    def picture_data(self):
+        while((self.get_read_data(32) >= dict['patch_start_code1'])&(self.get_read_data(32) <= dict['patch_start_code2'])):#000001+0x00～0x7F(patch_index)
+            self.patch()
     
-    # 参考图像队列配置集定义
+    #解码片头
+    def dec_eco_patch_header(self):
+
+    #片定义
+    def patch(self):
+        self.dec_eco_patch_header()
+
+        self.patch_start_code=self.bsd.assign_data('patch_start_code',32)#000001+0x00～0x7F(patch_index)
+        if (self.fixed_picture_qp_flag == 0):
+            self.fixed_patch_qp_flag=self.bsd.assign_data('fixed_patch_qp_flag',1)
+            self.patch_qp=self.bsd.assign_data('patch_qp',7)
+        else:
+            self.fixed_patch_qp_flag=1
+            self.patch_qp=self.bsd.assign_data('patch_qp',7)
+        if (self.sample_adaptive_offset_enable_flag==1):#SaoEnableFlag
+            for compIdx in range(3):
+                self.patch_sao_enable_flag[compIdx] = self.bsd.assign_data('patch_sao_enable_flag[compIdx]',1)
+        while (self.byte_aligned()==0):#字节对齐
+            self.aec_byte_alignment_bit = self.bsd.assign_data('aec_byte_alignment_bit',1)
+        while (is_end_of_patch()==0):
+            if (FixedQP==0):
+                lcu_qp_delta
+                PreviousDeltaQP = lcu_qp_delta
+            if (SaoEnableFlag):
+                if (PatchSaoEnableFlag[0] | PatchSaoEnableFlag[1] | PatchSaoEnableFlag[2]):
+                    if (MergeFlagExist):
+                        sao_merge_type_index
+                    if (SaoMergeMode == 'SAO_NON_MERGE') :
+                        for compIdx in range(3):
+                            if (PatchSaoEnableFlag[compIdx]) :
+                                sao_mode[compIdx]
+                                if (SaoMode[compIdx] == 'SAO_Interval'):
+                                    for j in range(MaxOffsetNumber):
+                                        sao_interval_offset_abs[compIdx][j]
+                                        if (SaoIntervalOffsetAbs[compIdx][j]):
+                                            sao_interval_offset_sign[compIdx][j]
+                                    sao_interval_start_pos[compIdx]
+                                    sao_interval_delta_pos_minus2[compIdx]
+                                if (SaoMode[compIdx] == 'SAO_Edge'):
+                                    for j in range(MaxOffsetNumber):
+                                        sao_edge_offset[compIdx][j]
+                                    sao_edge_type[compIdx]
+            for compIdx in range(3):
+                if (PictureAlfEnableFlag[compIdx] == 1):
+                    alf_lcu_enable_flag[compIdx][LcuIndex]
+            x0 = (LcuIndex % pictureWidthInLcu) * LcuSize
+            y0 = (LcuIndex / pictureWidthInLcu) * LcuSize
+            coding_unit_tree(x0, y0, 0, 1<<LcuSizeInBit, 1<<LcuSizeInBit, 1, 'PRED_No_Constraint')
+            aec_lcu_stuffing_bit
+        next_start_code( )
+        patch_end_code
+
+    # 参考图像队列配置集定义，解码参考图像
     def reference_picture_list_set(self,rpl):
         print('in func reference_picture_list_set')
         if(self.SH.library_picture_enable_flag==1):
@@ -203,6 +490,15 @@ class video_sequence:
                 #if(int(self.abs_delta_doi[mlist][rpls][i]) > 0):
                 #    self.sign_delta_doi[mlist][rpls][i] = self.bsd.assign_data('sign_delta_doi[mlist][rpls][i]',1)
         print('out func reference_picture_list_set')        
+
+    #初始化加权量化矩阵
+    def init_pic_wq_matrix(self,wq_4x4_matrix,wq_8x8_matrix):
+        for i in range(4):
+            for j in range(4):
+                wq_4x4_matrix[i][j]= 64
+        for i in range(8):
+            for j in range(8):
+                wq_8x8_matrix[i][j]= 64
 
 
     # 默认的加权量化矩阵

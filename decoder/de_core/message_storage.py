@@ -100,7 +100,6 @@ class rpl:
         self.referenced_library_picture_index = [0 for i in range(2)]#被参考的知识图像索引
         self.abs_delta_doi = [0 for i in range(2)]#参考图像DOI差值绝对值,DOI为图像头中的解码顺序索引
         self.sign_delta_doi=[0 for i in range(2)]#参考图像DOI差值符号,DOI为图像头中的解码顺序索引
-
         self.WeightQuantMatrix4x4= [[0 for j in range(0,4)] for i in range(0,4)]#4x4加权量化矩阵系数
         self.WeightQuantMatrix8x8= [[0 for j in range(0,8)] for i in range(0,8)]#8x8加权量化矩阵系数
 
@@ -167,11 +166,47 @@ class sequence_header:
         self.patch_height_minus1=0#片高度
         self.reserved_bits=0#
         self.marker_bit =0#
-
         # 参考图像队列配置集定义
         self.rpls_l0=[rpl() for i in range(32)]
         self.rpls_l1=[rpl() for i in range(32)]
 
+#帧内预测图像头定义
+class intra_picture_header:
+    def __init__(self):
+        self.intra_picture_start_code=0
+        self.bbv_delay=0
+        self.time_code_flag=0
+        self.time_code=0
+        self.decode_order_index=0
+        self.library_picture_index=0
+        self.temporal_id=0
+        self.picture_output_delay=0
+        self.bbv_check_times=0
+        self.progressive_frame=0
+        self.picture_structure=0
+        self.top_field_first=0
+        self.repeat_first_field=0
+        self.top_field_picture_flag=0
+        self.reserved_bits=0
+        self.ref_pic_list_set_flag=[0 for i in range(2)] 
+        self.ref_pic_list_set_idx=[0 for i in range(2)] 
+        self.fixed_picture_qp_flag=0
+        self.picture_qp=0
+        self.loop_filter_disable_flag=0
+        self.loop_filter_parameter_flag=0
+        self.alpha_c_offset=0
+        self.beta_offset=0
+        self.chroma_quant_param_disable_flag=0
+        self.chroma_quant_param_delta_cb=0
+        self.chroma_quant_param_delta_cr=0
+        self.pic_weight_quant_enable_flag=0
+        self.pic_weight_quant_data_index=0
+        self.reserved_bits=0
+        self.weight_quant_param_index=0
+        self.weight_quant_model=0
+        self.weight_quant_param_delta1=[0 for i in range(6)]
+        self.weight_quant_param_delta2=[0 for i in range(6)]
+        self.picture_alf_enable_flag=[0 for i in range(3)]
 
 '''
 #解码过程的所有信息
@@ -237,9 +272,6 @@ class com_info:
         self.f_lcu=0#LCU单元的图片尺寸，w*h
         self.pic_width_in_scu=0#SCU单元的图片宽度
 
-
-
-
     /* picture height in SCU unit */
     int                     pic_height_in_scu;
     /* picture size in SCU unit (= pic_width_in_scu * h_scu) */
@@ -249,3 +281,69 @@ class com_info:
     int                     bit_depth_input;
     int                     qp_offset_bit_depth;
 '''
+g_DOIPrev = 0#前一帧的DOI
+g_CountDOICyCleTime=0#记录DOI的循环次数
+Y_C = 0
+U_C = 1
+V_C = 2
+
+#ALFParam
+class ALFParam:
+    def __init__(self):
+        self.alf_flag=0
+        self.num_coeff=0
+        self.filters_per_group=0
+        self.componentID=0
+        self.filterPattern=0
+        self.coeffmulti=0
+
+#图像头
+class com_pic_header:
+    def __init__(self):
+        self.low_delay=0#从SQH拷贝
+        self.poc = 0#
+        self.rpl_l0_idx=-1#-1指slice没有用RPL0中SPS的RPL
+        self.rpl_l1_idx=-1#-1指slice没有用RPL1中SPS的RPL
+        self.rpl_l0 = rpl()
+        self.rpl_l1 = rpl()
+        self.num_ref_idx_active_override_flag=0#
+        self.ref_pic_list_sps_flag=[0 for i in range(2)]
+        self.dtr = 0#
+        self.slice_type = 0#
+        self.temporal_id = 0#
+        self.loop_filter_disable_flag=0#
+        self.bbv_delay=0
+        self.bbv_check_times=0
+        self.loop_filter_parameter_flag=0
+        self.alpha_c_offset=0
+        self.beta_offset=0
+        self.chroma_quant_param_disable_flag=0
+        self.chroma_quant_param_delta_cb=0
+        self.chroma_quant_param_delta_cr=0
+
+        #Flag and coeff for ALF
+        self.tool_alf_on=0
+        self.pic_alf_on=0
+        self.m_alfPictureParam = ALFParam()
+        self.fixed_picture_qp_flag=0
+        self.random_access_decodable_flag=0
+        self.time_code_flag=0
+        self.time_code=0
+        self.decode_order_index=0
+        self.picture_output_delay=0
+        self.progressive_frame=0
+        self.picture_structure=0
+        self.top_field_first=0
+        self.repeat_first_field=0
+        self.top_field_picture_flag=0
+        self.picture_qp=0
+        self.affine_subblock_size_idx=0
+        self.is_RLpic_flag=0  # only reference libpic
+        self.library_picture_index=0
+        self.pic_wq_enable=0
+        self.pic_wq_data_idx=0
+        self.wq_param=0
+        self.wq_model=0
+        self.wq_param_vector[6]=0
+        self.wq_4x4_matrix[16]=0
+        self.wq_8x8_matrix[64]=0
