@@ -1,6 +1,6 @@
 # This file is a basic file, store video message 
 # store video_sequence message, instantiation it and add to main function
-
+import copy
 #视频序列定义,这是整个视频解码的最高层
 dict =  {
     'video_sequence_start_code':'00000000000000000000000110110000',#0x000001B0,#视频序列起始码
@@ -80,13 +80,20 @@ class bitstream_data:
             self.stuffing_bit=self.assign_data('stuffing_bit',1)#0
         while (self.get_read_data(24) != '000000000000000000000001'):#起始码前缀
             self.stuffing_byte=self.assign_data('stuffing_byte',8)#0#00000000
-
+    
+    #拷贝数据
+    def memcpy(self,dest,src):
+        dest = copy.deepcopy(src)
+    #初始化数据
+    def memset(self,dest,src,len):
+        for i in range(len):
+            dest[i] = src
 
 
 # 参考图像结构
 class rpl:
     def __init__(self):
-        self.slice_type=0#slice类型
+        self.slice_type=''#slice类型
         self.poc=0
         self.tid=0
         self.ref_pic_num=0#参考图像数
@@ -100,8 +107,6 @@ class rpl:
         self.referenced_library_picture_index = [0 for i in range(2)]#被参考的知识图像索引
         self.abs_delta_doi = [0 for i in range(2)]#参考图像DOI差值绝对值,DOI为图像头中的解码顺序索引
         self.sign_delta_doi=[0 for i in range(2)]#参考图像DOI差值符号,DOI为图像头中的解码顺序索引
-        self.WeightQuantMatrix4x4= [[0 for j in range(0,4)] for i in range(0,4)]#4x4加权量化矩阵系数
-        self.WeightQuantMatrix8x8= [[0 for j in range(0,8)] for i in range(0,8)]#8x8加权量化矩阵系数
 
 #序列头定义
 class sequence_header:
@@ -128,9 +133,11 @@ class sequence_header:
         self.temporal_id_enable_flag=0#时间层标识允许标志
         self.bbv_buffer_size=0#位流缓冲区尺寸
         self.max_dpb_minus1=0#最大解码图像缓冲区大小
-        self.rpl1_idx_exist_flag=0#参考图像队列1索引存在标志
+        self.rpl1_index_exist_flag=0#参考图像队列1索引存在标志
         self.rpl1_same_as_rpl0_flag=0#参考图像队列相同标志
         self.num_ref_pic_list_set =[0 for i in range(2)] #参考图像队列配置集数
+        self.rpls_l0_num = 0#参考图像队列配置集数
+        self.rpls_l1_num = 0#参考图像队列配置集数
         self.num_ref_default_active_minus1 = [0 for i in range(2)]#默认活跃参考图像数
         self.log2_lcu_size_minus2=0#最大编码单元尺寸
         self.log2_min_cu_size_minus2=0#最小编码单元尺寸
@@ -139,7 +146,7 @@ class sequence_header:
         self.log2_min_qt_size_minus2=0#最小四叉树尺寸
         self.log2_max_bt_size_minus2=0#最大二叉树尺寸
         self.log2_max_eqt_size_minus3=0#最大扩展四叉树尺寸
-        self.weight_quant_enable_flag=0#加权量化允许标志
+        self.wq_enable=0#加权量化允许标志
         self.load_seq_weight_quant_data_flag=0#加权量化矩阵加载标志
         self.secondary_transform_enable_flag=0#二次变换允许标志
         self.sample_adaptive_offset_enable_flag=0#样值偏移补偿允许标志
@@ -169,6 +176,9 @@ class sequence_header:
         # 参考图像队列配置集定义
         self.rpls_l0=[rpl() for i in range(32)]
         self.rpls_l1=[rpl() for i in range(32)]
+        self.wq_4x4_matrix= [0 for i in range(0,16)] #4x4加权量化矩阵系数
+        self.wq_8x8_matrix= [0 for i in range(0,64)] #8x8加权量化矩阵系数
+
 
 #帧内预测图像头定义
 class intra_picture_header:
@@ -199,7 +209,7 @@ class intra_picture_header:
         self.chroma_quant_param_disable_flag=0
         self.chroma_quant_param_delta_cb=0
         self.chroma_quant_param_delta_cr=0
-        self.pic_weight_quant_enable_flag=0
+        self.pic_wq_enable=0
         self.pic_weight_quant_data_index=0
         self.reserved_bits=0
         self.weight_quant_param_index=0
@@ -281,11 +291,7 @@ class com_info:
     int                     bit_depth_input;
     int                     qp_offset_bit_depth;
 '''
-g_DOIPrev = 0#前一帧的DOI
-g_CountDOICyCleTime=0#记录DOI的循环次数
-Y_C = 0
-U_C = 1
-V_C = 2
+
 
 #ALFParam
 class ALFParam:
@@ -309,7 +315,7 @@ class com_pic_header:
         self.num_ref_idx_active_override_flag=0#
         self.ref_pic_list_sps_flag=[0 for i in range(2)]
         self.dtr = 0#
-        self.slice_type = 0#
+        self.slice_type = ''#
         self.temporal_id = 0#
         self.loop_filter_disable_flag=0#
         self.bbv_delay=0
@@ -323,7 +329,7 @@ class com_pic_header:
 
         #Flag and coeff for ALF
         self.tool_alf_on=0
-        self.pic_alf_on=0
+        self.pic_alf_on=[0 for i in range(3)]
         self.m_alfPictureParam = ALFParam()
         self.fixed_picture_qp_flag=0
         self.random_access_decodable_flag=0
@@ -344,6 +350,42 @@ class com_pic_header:
         self.pic_wq_data_idx=0
         self.wq_param=0
         self.wq_model=0
-        self.wq_param_vector[6]=0
-        self.wq_4x4_matrix[16]=0
-        self.wq_8x8_matrix[64]=0
+        self.wq_param_vector = [0 for i in range(6)]
+        self.wq_4x4_matrix = [0 for i in range(16)]
+        self.wq_8x8_matrix = [0 for i in range(64)]
+
+class patch_info:
+    def __init__(self):
+        self.stable = 0
+        self.cross_patch_loop_filter =0
+        self.ref_colocated=0
+        self.uniform=0
+        self.height=0
+        self.width=0
+        self.columns=0
+        self.rows=0
+        self.idx=0
+        #片的左上方像素位置
+        self.x_pel=0
+        self.y_pel=0
+        #片中所有的cu都是skip模式
+        self.skip_patch_flag=0
+        #每个片的指针位置
+        self.width_in_lcu=0
+        self.height_in_lcu=0
+        #片计数
+        self.x_pat=0
+        self.y_pat=0
+        #定义片边界
+        self.left_pel=0
+        self.right_pel=0
+        self.up_pel=0
+        self.down_pel=0
+        #所有片的sao使能信息
+        self.patch_sao_enable=0
+        
+class com_sh_ext:
+    def __init__(self):
+        self.slice_sao_enable = [0 for i in range(3)]
+        self.fixed_slice_qp_flag
+        self.slice_qp
