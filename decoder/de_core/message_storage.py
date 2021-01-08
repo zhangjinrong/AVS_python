@@ -292,6 +292,49 @@ class com_info:
     int                     qp_offset_bit_depth;
 '''
 
+MAX_CU_CNT_IN_LCU=6
+NUM_BLOCK_SHAPE=7
+MAX_CU_CNT_IN_LCU=1024
+ALLOWED_HMVP_NUM=8
+
+
+#用于解码的核心类
+class dec_core:
+    def __init__(self):
+        self.mod_info_curr = com_mode()
+        #帧内预测的相邻像素
+        self.nb = [[[0 for i in range(128)] for j in range(2)]for k in range(3)]
+        #当前编码单元亮度的QP值
+        self.qp_y=0
+        #当前编码单元色度的QP值
+        self.qp_u=0
+        self.qp_v=0
+        #当前LCU
+        #LCU数量
+        self.lcu_num=0
+        #当前LCU的X地址
+        self.x_lcu=0
+        #当前LCU的Y地址
+        self.y_lcu=0
+        #当前LCU的左侧像素位置
+        self.x_pel=0
+        #当前LCU的上方像素位置
+        self.y_pel=0
+        #当前LCU的模式映射
+        self.split_mode=[[[0 for i in range(MAX_CU_CNT_IN_LCU)]for j in range(NUM_BLOCK_SHAPE)]for k in range(MAX_CU_DEPTH)]
+        #平台特殊数据
+        self.pf = 0
+        self.motion_cands = [com_motion() for i in range(ALLOWED_HMVP_NUM)]
+        self.cnt_hmvp_cands=0
+
+
+MV_D=2
+REFP_NUM=2
+class com_motion:
+    def __init__(self):
+        self.mv = [[0 for i in range(MV_D)]for j in range(REFP_NUM)]
+        self.ref_idx[0 for i in range(REFP_NUM)]
+
 
 #ALFParam
 class ALFParam:
@@ -389,3 +432,91 @@ class com_sh_ext:
         self.slice_sao_enable = [0 for i in range(3)]
         self.fixed_slice_qp_flag
         self.slice_qp
+
+
+
+class dec_sbac:
+    def __init__(self):
+        self.range=0
+        self.value=0
+        self.bits_Needed=0
+        self.prev_bytes=0
+        self.ctx = com_sbac_ctx()
+
+NUM_SBAC_CTX_SKIP_FLAG=4
+NUM_SBAC_CTX_SKIP_IDX=11
+NUM_SBAC_CTX_DIRECT_FLAG=2
+NUM_SBAC_CTX_UMVE_BASE_IDX=1
+NUM_SBAC_CTX_UMVE_STEP_IDX=1
+NUM_SBAC_CTX_UMVE_DIR_IDX=2
+NUM_INTER_DIR_CTX=3
+NUM_INTRA_DIR_CTX=10
+NUM_PRED_MODE_CTX=6
+NUM_CONS_MODE_CTX=1
+NUM_IPF_CTX=1
+NUM_REFI_CTX=3
+NUM_MVR_IDX_CTX=4
+NUM_AFFINE_MVR_IDX_CTX=2
+NUM_EXTEND_AMVR_FLAG=1
+NUM_MV_RES_CTX=3
+NUM_CTP_ZERO_FLAG_CTX=2
+NUM_QT_CBF_CTX=3
+NUM_TB_SPLIT_CTX=1
+NUM_SBAC_CTX_RUN=24
+NUM_SBAC_CTX_LAST1=6
+NUM_SBAC_CTX_LAST2=12
+NUM_SBAC_CTX_LEVEL=24
+NUM_SBAC_CTX_SPLIT_FLAG=4
+NUM_SBAC_CTX_BT_SPLIT_FLAG=9
+NUM_SBAC_CTX_SPLIT_DIR=5
+NUM_SBAC_CTX_SPLIT_MODE=3
+NUM_SBAC_CTX_AFFINE_FLAG=1
+NUM_SBAC_CTX_AFFINE_MRG=4
+NUM_SBAC_CTX_SMVD_FLAG=1
+NUM_SBAC_CTX_PART_SIZE=6
+NUM_SAO_MERGE_FLAG_CTX=3
+NUM_SAO_MODE_CTX=1
+NUM_SAO_OFFSET_CTX=1
+NUM_ALF_LCU_CTX=1
+NUM_SBAC_CTX_DELTA_QP=4
+
+class com_sbac_ctx:
+    def __init__(self):
+        self.skip_flag   =    [0 for i in range(NUM_SBAC_CTX_SKIP_FLAG)]
+        self.skip_idx_ctx =   [0 for i in range(NUM_SBAC_CTX_SKIP_IDX)]
+        self.direct_flag  =   [0 for i in range(NUM_SBAC_CTX_DIRECT_FLAG)]
+        self.umve_flag=0
+        self.umve_base_idx  = [0 for i in range(NUM_SBAC_CTX_UMVE_BASE_IDX)]
+        self.umve_step_idx  = [0 for i in range(NUM_SBAC_CTX_UMVE_STEP_IDX)]
+        self.umve_dir_idx   = [0 for i in range(NUM_SBAC_CTX_UMVE_DIR_IDX)]
+        self.inter_dir      = [0 for i in range(NUM_INTER_DIR_CTX)]
+        self.intra_dir      = [0 for i in range(NUM_INTRA_DIR_CTX)]
+        self.pred_mode      = [0 for i in range(NUM_PRED_MODE_CTX)]
+        self.cons_mode    =  [0 for i in range(NUM_CONS_MODE_CTX)]
+        self.ipf_flag     = [0 for i in range(NUM_IPF_CTX)] 
+        self.refi         = [0 for i in range(NUM_REFI_CTX)]   
+        self.mvr_idx      = [0 for i in range(NUM_MVR_IDX_CTX)]
+        self.affine_mvr_idx = [0 for i in range(NUM_AFFINE_MVR_IDX_CTX)] 
+        self.mvp_from_hmvp_flag= [0 for i in range(NUM_EXTEND_AMVR_FLAG)]  
+        self.mvd               = [[0 for i in range(NUM_MV_RES_CTX)] for j in range(2)] 
+        self.ctp_zero_flag     = [0 for i in range(NUM_CTP_ZERO_FLAG_CTX)]  
+        self.cbf               = [0 for i in range(NUM_QT_CBF_CTX)]         
+        self.tb_split          = [0 for i in range(NUM_TB_SPLIT_CTX)]       
+        self.run               = [0 for i in range(NUM_SBAC_CTX_RUN)]       
+        self.run_rdoq          = [0 for i in range(NUM_SBAC_CTX_RUN)]       
+        self.last1             = [0 for i in range(NUM_SBAC_CTX_LAST1*2)]   
+        self.last2             = [0 for i in range(NUM_SBAC_CTX_LAST2 * 2 - 2)] 
+        self.level             = [0 for i in range(NUM_SBAC_CTX_LEVEL)]         
+        self.split_flag        = [0 for i in range(NUM_SBAC_CTX_SPLIT_FLAG)]    
+        self.bt_split_flag     = [0 for i in range(NUM_SBAC_CTX_BT_SPLIT_FLAG)] 
+        self.split_dir         = [0 for i in range(NUM_SBAC_CTX_SPLIT_DIR)]     
+        self.split_mode        = [0 for i in range(NUM_SBAC_CTX_SPLIT_MODE)]    
+        self.affine_flag       = [0 for i in range(NUM_SBAC_CTX_AFFINE_FLAG)]   
+        self.affine_mrg_idx    = [0 for i in range(NUM_SBAC_CTX_AFFINE_MRG)]    
+        self.smvd_flag         = [0 for i in range(NUM_SBAC_CTX_SMVD_FLAG)] 
+        self.part_size         = [0 for i in range(NUM_SBAC_CTX_PART_SIZE)] 
+        self.sao_merge_flag    = [0 for i in range(NUM_SAO_MERGE_FLAG_CTX)] 
+        self.sao_mode          = [0 for i in range(NUM_SAO_MODE_CTX)]       
+        self.sao_offset        = [0 for i in range(NUM_SAO_OFFSET_CTX)]     
+        self.alf_lcu_enable    = [0 for i in range(NUM_ALF_LCU_CTX)]        
+        self.delta_qp          = [0 for i in range(NUM_SBAC_CTX_DELTA_QP)]  

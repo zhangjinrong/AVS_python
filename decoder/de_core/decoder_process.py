@@ -483,10 +483,17 @@ class video_sequence:
                 self.sh.patch_sao_enable_flag[compIdx] = self.bsd.assign_data('patch_sao_enable_flag[compIdx]',1)
         while(self.bsd.byte_aligned()==0):#字节对齐
             self.bsd.assign_data('byte_aligned',1)
-        
+    
+    #解码图像
+    def dec_pic(self):
+        #dec_sbac_init(bs);这里代码要读16bit数，文档中不读，再决定是否读
+        while (is_end_of_patch()==0):
+            dec_eco_lcu_delta_qp
+
     #片定义
     def patch(self):
         self.dec_eco_patch_header()
+        self.dec_pic()
 
 
 
