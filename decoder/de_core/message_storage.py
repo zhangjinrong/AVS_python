@@ -433,8 +433,6 @@ class com_sh_ext:
         self.fixed_slice_qp_flag
         self.slice_qp
 
-
-
 class dec_sbac:
     def __init__(self):
         self.range=0
@@ -479,6 +477,7 @@ NUM_SAO_MODE_CTX=1
 NUM_SAO_OFFSET_CTX=1
 NUM_ALF_LCU_CTX=1
 NUM_SBAC_CTX_DELTA_QP=4
+MAX_NUM_SAO_CLASSES=32
 
 class com_sbac_ctx:
     def __init__(self):
@@ -520,3 +519,66 @@ class com_sbac_ctx:
         self.sao_offset        = [0 for i in range(NUM_SAO_OFFSET_CTX)]     
         self.alf_lcu_enable    = [0 for i in range(NUM_ALF_LCU_CTX)]        
         self.delta_qp          = [0 for i in range(NUM_SBAC_CTX_DELTA_QP)]  
+
+class SAOBlkParam:
+    def __init__(self):
+        self.modeIdc=0 #NEW, MERGE, OFF
+        self.typeIdc=0 #NEW: EO_0, EO_90, EO_135, EO_45, BO. MERGE: left, above
+        self.startBand=0 #BO: starting band index
+        self.startBand2=0
+        self.deltaband=0
+        self.offset = [0 for i in range(MAX_NUM_SAO_CLASSES)]
+
+MAX_CU_DIM = 128*128
+N_C = 3
+MAX_NUM_TB = 4
+MAX_NUM_PB = 4
+#模式决策结构
+class com_mode:
+    def __init__(self):
+        self.x_scu = 0#SCU单元的CU位置X
+        self.y_scu = 0#SCU单元的CU位置Y
+        self.cud = 0#当前CU深度
+        self.cu_width = 0#当前CU宽度
+        self.cu_height = 0#当前CU高度
+        self.cu_width_log2=0#log2 of cu_width
+        self.cu_height_log2=0#log2 of cu_height
+        self.x_pos = 0#CU的位置
+        self.y_pos = 0#CU的位置
+        self.scup=0#SCU单元中当前帧CU的位置
+        self.cu_mode=0
+        self.pb_part=0
+        self.tb_part=0
+        self.pb_info=com_part_info()
+        self.tb_info=com_part_info()
+        self.rec = [[0 for i in range(MAX_CU_DIM)] for j in range(N_C)]
+        self.coef = [[0 for i in range(MAX_CU_DIM)] for j in range(N_C)]
+        self.pred = [[0 for i in range(MAX_CU_DIM)] for j in range(N_C)]
+        self.num_nz = [[0 for i in range(N_C)] for j in range(MAX_NUM_TB)]
+        self.refi = [0 for i in range(REFP_NUM)]#参考指数
+        self.mvr_idx = 0#MVR指数
+        self.umve_flag=0
+        self.umve_idx=0
+        self.skip_idx=0
+        self.mvp_from_hmvp_flag=0
+        self.mvd = [[0 for i in range(MV_D)] for j in range(REFP_NUM)]#运动不同
+        self.mv = [[0 for i in range(MV_D)] for j in range(REFP_NUM)]#运动信息
+        self.affine_flag=0
+        self.affine_mv = [[[0 for i in range(MV_D)] for j in range(VER_NUM)]for k in range(REFP_NUM)]
+        self.affine_mvd = [[[0 for i in range(MV_D)] for j in range(VER_NUM)]for k in range(REFP_NUM)]
+        self.smvd_flag=0
+        #帧内预测模式
+        self.mpm = [[0 for i in range(2)] for j in range(MAX_NUM_PB)]
+        self.ipm = [[0 for i in range(2)] for j in range(MAX_NUM_PB)]   
+        self.ipf_flag = 0
+
+
+class com_part_info:
+    def __init__(self):
+        self.u8 num_sub_part=0
+        self.sub_x = [0 for i in range(MAX_NUM_PB)]
+        self.sub_y = [0 for i in range(MAX_NUM_PB)]
+        self.sub_w = [0 for i in range(MAX_NUM_PB)]
+        self.sub_h = [0 for i in range(MAX_NUM_PB)]
+        self.sub_scup = [0 for i in range(MAX_NUM_PB)]
+  

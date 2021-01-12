@@ -103,6 +103,7 @@ class video_sequence:
         self.patch_info=patch_info()
         self.sh = com_sh_ext()
         self.picture_data()
+        self.df = decoder_func()
         '''
         while((self.get_read_data(32) != dict['video_sequence_end_code']) & (self.get_read_data(32) != dict['video_edit_code'])):
             sequence_header(self.data_file,self.pointer_position)
@@ -487,8 +488,12 @@ class video_sequence:
     #解码图像
     def dec_pic(self):
         #dec_sbac_init(bs);这里代码要读16bit数，文档中不读，再决定是否读
+        last_lcu_delta_qp=0
+        last_lcu_qp = ctx.info.shext.slice_qp
         while (is_end_of_patch()==0):
-            dec_eco_lcu_delta_qp
+            last_lcu_delta_qp = self.df.dec_eco_lcu_delta_qp(self.bsd,sbac,last_lcu_delta_qp)
+            lcu_qp = last_lcu_qp + last_lcu_delta_qp
+            self.df.readParaSAO_one_LCU()
 
     #片定义
     def patch(self):
