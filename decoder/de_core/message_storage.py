@@ -109,7 +109,7 @@ class rpl:
         self.sign_delta_doi=[0 for i in range(2)]#参考图像DOI差值符号,DOI为图像头中的解码顺序索引
 
 #序列头定义
-class sequence_header:
+class com_sqh:
     def __init__(self,bitstream_data):
         self.bsd = bitstream_data
         self.video_sequence_start_code=0#序列头起始码
@@ -218,19 +218,19 @@ class intra_picture_header:
         self.weight_quant_param_delta2=[0 for i in range(6)]
         self.picture_alf_enable_flag=[0 for i in range(3)]
 
-'''
+
 #解码过程的所有信息
-class decoder_CTX:
+class dec_ctx:
     def __init__(self):
         self.info = com_info()
         self.magic = 0
-        self.id = dec()#解码器标识号
+        self.id = 0#解码器标识号
         self.core = dec_core()#当前操作的核心信息
         self.bs = 0#当前解码比特流
         self.dpm = com_pm()#解码图像的缓存区管理
-        self.cdsc = dec_cdsc()#创建描述符
+        self.cdsc = 0#创建描述符
         self.pic = com_pic()#当前解码图像的缓存区
-        self.sbac = sbac_dec()#基于语法元素的并行CABAC编码方案
+        self.sbac = dec_sbac()#基于语法元素的并行CABAC编码方案
         self.init_flag = 0
         self.map = com_map()
         self.tree_status = 0
@@ -267,6 +267,22 @@ class decoder_CTX:
         self.patch = patch()
         self.wq = [0 for i in range(2)]
 
+#map结构
+class com_map:
+    def __init__(self):
+        self.map_scu=0#SCU映射CU信息
+        self.map_split = [[[0 for i in range(MAX_CU_CNT_IN_LCU)]for j in range(NUM_BLOCK_SHAPE)]for k in range(MAX_CU_DEPTH)]#LCU分割信息
+        self.map_mv = [[0 for i in range(MV_D)]for j in range(REFP_NUM)]#每个块的解码运动矢量
+        self.map_refi = [0 for i in range(REFP_NUM)]#参考框架索引
+        #帧内预测模式
+        self.map_ipm = 0
+        self.map_cu_mode = 0
+        self.map_pb_tb_part=0
+        self.map_depth=0
+        self.map_delta_qp=0
+        self.map_patch_idx=0
+
+
 class com_info:
     def __init__(self):
         self.cnkh = com_cnkh()#当前块头
@@ -281,21 +297,108 @@ class com_info:
         self.pic_height_in_lcu=0#LCU单元的图片高度
         self.f_lcu=0#LCU单元的图片尺寸，w*h
         self.pic_width_in_scu=0#SCU单元的图片宽度
+        self.pic_height_in_scu=0#SCU单元的图片高度
+        self.f_scu=0#SCU单元的图像尺寸(w*h)
+        self.bit_depth_internal=0
+        self.bit_depth_input=0
+        self.qp_offset_bit_depth=0
 
-    /* picture height in SCU unit */
-    int                     pic_height_in_scu;
-    /* picture size in SCU unit (= pic_width_in_scu * h_scu) */
-    int                     f_scu;
 
-    int                     bit_depth_internal;
-    int                     bit_depth_input;
-    int                     qp_offset_bit_depth;
-'''
+MAX_PB_SIZE = 34 #MAX_NUM_REF_PICS + EXTRA_FRAME
+MAX_NUM_REF_PICS = 17
+
+#解码图像的缓存区管理
+class com_pm:
+    def __init__(self):
+        self.pic = [com_pic() for i in range(MAX_PB_SIZE)]#图片存储，包括参考图像和非参考图像
+        self.pic_ref = [com_pic() for i in range(MAX_NUM_REF_PICS)]#参考图像地址
+        self.max_num_ref_pics=0#最大参考图像数量
+        self.cur_num_ref_pics=0#PB中当前可获得参考图像数量
+        self.num_refp = [0 for i in range(REFP_NUM)]#参考图像数量
+        self.ptr_next_output = 0#下一个输出的POC
+        self.ptr_increase=0#POC 增量
+        self.max_pb_size=0#图像缓存的最大数量
+        self.cur_pb_size=0#当前图像的缓存尺寸
+        self.pic_lease= com_pic()#当前编解码缓存区的lease地址
+        self.pa = picbuf_allocator()#图像缓存分配器
+        self.is_library_buffer_empty=0
+        self.cur_libpb_size=0
+        self.pb_libpic_library_index=0
+
+#图像缓存分配器
+class picbuf_allocator:
+    def __init__(self):
+        self.width=0
+        self.height=0
+        self.pad_l=0#亮度的扩展尺寸
+        self.pad_c=0#色度的扩展尺寸
+        self.ndata=0#随机数
+        self.pdata=0#随机地址
+
+REFP_NUM = 2
+MV_D = 2
+
+class com_pic:
+    def __init__(self):
+        self.y=0#Y元素的起始地址
+        self.u=0#U元素的起始地址
+        self.v=0#V元素的起始地址
+        self.stride_luma=0#亮度图像的跨度
+        self.stride_chroma=0#色度图像的跨度
+        self.width_luma=0#亮度图像的宽
+        self.height_luma=0#亮度图像的高
+        self.width_chroma=0#色度图像的宽
+        self.height_chroma=0#色度图像的高
+        self.padsize_luma=0#亮度的扩展尺寸
+        self.padsize_chroma=0#色度的扩展尺寸
+        self.imgb=com_imgb()#图像缓存区
+        self.dtr=0#解码此图像的时间
+        self.ptr=0#显示此图像的时间
+        self.picture_output_delay=0
+        self.is_ref=0#参考图像的类型，为0表示没有使用参考区域
+        self.need_for_out=0#是否需要输出
+        self.temporal_id=0#可扩展的层id
+        self.map_mv = [[0 for i in range(MV_D)]for j in range(REFP_NUM)]
+        self.map_refi = [0 for i in range(REFP_NUM)]
+        self.list_ptr = [0 for i in range(MAX_NUM_REF_PICS)]
+
+
+COM_IMGB_MAX_PLANE=4
+
+#图像缓存区
+class com_imgb:
+    def __init__(self):
+        self.cs = 0#颜色空间
+        self.np=0#plane数量
+        self.horizontal_size=0#水平尺寸
+        self.vertical_size=0#垂直尺寸
+        self.width = [0 for i in range(COM_IMGB_MAX_PLANE)]#像素单元宽度
+        self.height = [0 for i in range(COM_IMGB_MAX_PLANE)]#像素单元高度
+        self.stride = [0 for i in range(COM_IMGB_MAX_PLANE)]#像素单元的缓冲步幅
+        self.addr_plane = [0 for i in range(COM_IMGB_MAX_PLANE)]#每个plane的地址
+        self.ts = [com_mtime() for i in range(4)]#时间戳
+        self.width_aligned = [0 for i in range(COM_IMGB_MAX_PLANE)]#像素单元的对齐宽度
+        self.height_aligned = [0 for i in range(COM_IMGB_MAX_PLANE)]#像素单元的对齐高度
+        self.pad_left = [0 for i in range(COM_IMGB_MAX_PLANE)]#像素单元的左侧扩展尺寸
+        self.pad_right = [0 for i in range(COM_IMGB_MAX_PLANE)]#像素单元的右侧扩展尺寸
+        self.pad_up = [0 for i in range(COM_IMGB_MAX_PLANE)]#像素单元的上侧扩展尺寸
+        self.pad_down = [0 for i in range(COM_IMGB_MAX_PLANE)]#像素单元的下侧扩展尺寸
+        self.buf_addr = [0 for i in range(COM_IMGB_MAX_PLANE)]#实际缓存区的地址
+        self.buf_size = [0 for i in range(COM_IMGB_MAX_PLANE)]#实际缓存区的尺寸
+        #生命周期管理
+        self.refcnt = 0
+    #int                 (*addref)(COM_IMGB * imgb);
+    #int                 (*getref)(COM_IMGB * imgb);
+    #int                 (*release)(COM_IMGB * imgb);
+
+
 
 MAX_CU_CNT_IN_LCU=6
 NUM_BLOCK_SHAPE=7
 MAX_CU_CNT_IN_LCU=1024
 ALLOWED_HMVP_NUM=8
+
+
 
 
 #用于解码的核心类
@@ -333,7 +436,7 @@ REFP_NUM=2
 class com_motion:
     def __init__(self):
         self.mv = [[0 for i in range(MV_D)]for j in range(REFP_NUM)]
-        self.ref_idx[0 for i in range(REFP_NUM)]
+        self.ref_idx = [0 for i in range(REFP_NUM)]
 
 
 #ALFParam
@@ -430,8 +533,8 @@ class patch_info:
 class com_sh_ext:
     def __init__(self):
         self.slice_sao_enable = [0 for i in range(3)]
-        self.fixed_slice_qp_flag
-        self.slice_qp
+        self.fixed_slice_qp_flag =0 
+        self.slice_qp = 0
 
 class dec_sbac:
     def __init__(self):
@@ -575,7 +678,7 @@ class com_mode:
 
 class com_part_info:
     def __init__(self):
-        self.u8 num_sub_part=0
+        self.num_sub_part=0
         self.sub_x = [0 for i in range(MAX_NUM_PB)]
         self.sub_y = [0 for i in range(MAX_NUM_PB)]
         self.sub_w = [0 for i in range(MAX_NUM_PB)]

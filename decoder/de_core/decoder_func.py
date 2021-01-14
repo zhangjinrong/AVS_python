@@ -726,7 +726,9 @@ class decoder_func:
             if (ctx.info.sqh.num_of_hmvp_cand & core.mod_info_curr.cu_mode != MODE_INTRA & ~core.mod_info_curr.affine_flag):     
                 update_skip_candidates(core.motion_cands, core.cnt_hmvp_cands, ctx.info.sqh.num_of_hmvp_cand, ctx.map.map_mv[mod_info_curr.scup], ctx.map.map_refi[mod_info_curr.scup])
         return COM_OK
+
 SPLIT_CHECK_NUM = 6
+    
     def dec_eco_split_mode(self):
         split_mode = NO_SPLIT
         ctx = 0
@@ -958,3 +960,127 @@ SPLIT_CHECK_NUM = 6
         pass
     def com_picbuf_signature(self):
         pass
+MIN_CU_LOG2=2
+PIC_PAD_SIZE_L=144
+PIC_PAD_SIZE_C=72
+MAX_NUM_REF_PICS=17
+MAX_PB_SIZE=34
+    def sequence_init(self,ctx,sqh):
+        ctx.info.bit_depth_internal = 10 if(sqh.encoding_precision == 2) else 8
+        ctx.info.bit_depth_input = 8 if(sqh.sample_precision == 1) else 10
+        ctx.info.qp_offset_bit_depth = (8 * (ctx.info.bit_depth_internal - 8))
+        ctx.info.pic_width  = ((sqh.horizontal_size + MINI_SIZE - 1) / MINI_SIZE) * MINI_SIZE
+        ctx.info.pic_height = ((sqh.vertical_size   + MINI_SIZE - 1) / MINI_SIZE) * MINI_SIZE
+        ctx.info.max_cuwh = 1 << sqh.log2_max_cu_width_height
+        ctx.info.log2_max_cuwh = com_tbl_log2[ctx.info.max_cuwh]
+        size = ctx.info.max_cuwh
+        ctx.info.pic_width_in_lcu = (ctx.info.pic_width + (size - 1)) / size
+        ctx.info.pic_height_in_lcu = (ctx.info.pic_height + (size - 1)) / size
+        ctx.info.f_lcu = ctx.info.pic_width_in_lcu * ctx.info.pic_height_in_lcu
+        ctx.info.pic_width_in_scu = (ctx.info.pic_width + ((1 << MIN_CU_LOG2) - 1)) >> MIN_CU_LOG2
+        ctx.info.pic_height_in_scu = (ctx.info.pic_height + ((1 << MIN_CU_LOG2) - 1)) >> MIN_CU_LOG2
+        ctx.info.f_scu = ctx.info.pic_width_in_scu * ctx.info.pic_height_in_scu
+        ctx.pa.width = ctx.info.pic_width
+        ctx.pa.height = ctx.info.pic_height
+        ctx.pa.pad_l = PIC_PAD_SIZE_L
+        ctx.pa.pad_c = PIC_PAD_SIZE_C
+        #com_picman_init begin
+        ctx.dpm.max_num_ref_pics = MAX_NUM_REF_PICS
+        ctx.dpm.max_pb_size = MAX_PB_SIZE
+        ctx.dpm.ptr_increase = 1
+        ctx.dpm.pic_lease = 0
+        ctx.dpm.pb_libpic = 0
+        ctx.dpm.cur_libpb_size = 0
+        ctx.dpm.pb_libpic_library_index = -1
+        ctx.dpm.is_library_buffer_empty = 1
+        #com_picman_init end
+        if (ctx.pic_sao == 0):
+            ctx.pic_sao = self.com_pic_alloc(ctx.pa)
+        ctx.info.pic_header.tool_alf_on = ctx.info.sqh.adaptive_leveling_filter_enable_flag
+        if (ctx.pic_alf_Rec == 0):        
+            ctx.pic_alf_Rec = self.com_pic_alloc(ctx.pa)
+        if (ctx.pic_alf_Dec == 0):
+            ctx.pic_alf_Dec = self.com_pic_alloc(ctx.pa)
+        ctx.info.pic_header.pic_alf_on = ctx.pic_alf_on
+        ctx.info.pic_header.m_alfPictureParam = ctx.Dec_ALF.m_alfPictureParam
+        ctx.patch = patch
+        ctx.patch.stable = sqh.patch_stable
+        ctx.patch.cross_patch_loop_filter = sqh.cross_patch_loop_filter
+        ctx.patch.ref_colocated = sqh.patch_ref_colocated
+        if (ctx.patch.stable):
+            ctx.patch.uniform = sqh.patch_uniform
+            if (ctx.patch.uniform):
+                ctx.patch.width = sqh.patch_width_minus1 + 1
+                ctx.patch.height = sqh.patch_height_minus1 + 1
+                ctx.patch.columns = ctx.info.pic_width_in_lcu / ctx.patch.width
+                ctx.patch.rows = ctx.info.pic_height_in_lcu / ctx.patch.height
+                #set column_width and row_height
+                for i in range(ctx.patch.columns):
+                    ctx.patch_column_width[i] = ctx.patch.width
+                if (ctx.info.pic_width_in_lcu%ctx.patch.width != 0):
+                    if (ctx.patch.columns == 0):
+                        ctx.patch_column_width[ctx.patch.columns] = ctx.info.pic_width_in_lcu - ctx.patch.width*ctx.patch.columns
+                        ctx.patch.columns = ctx.patch.columns+1
+                    else:
+                        ctx.patch_column_width[ctx.patch.columns - 1] = ctx.patch_column_width[ctx.patch.columns - 1] + ctx.info.pic_width_in_lcu - ctx.patch.width*ctx.patch.columns
+                for i in range(ctx.patch.rows):
+                    ctx.patch_row_height[i] = ctx.patch.height
+                if (ctx.info.pic_height_in_lcu%ctx.patch.height != 0):
+                    if (ctx.patch.rows == 0):
+                        ctx.patch_row_height[ctx.patch.rows] = ctx.info.pic_height_in_lcu - ctx.patch.height*ctx.patch.rows
+                        ctx.patch.rows = ctx.patch.rows+1
+                    else:
+                        ctx.patch_row_height[ctx.patch.rows] = ctx.info.pic_height_in_lcu - ctx.patch.height*ctx.patch.rows
+                        ctx.patch.rows = ctx.patch.rows+1
+                ctx.patch.width_in_lcu = ctx.patch_column_width
+                ctx.patch.height_in_lcu = ctx.patch_row_height
+
+MIN_CU_SIZE = 4
+    def com_pic_alloc(self,pa):
+        width = pa.width
+        height = pa.height
+        pad_l = pa.pad_l
+        pad_c = pa.pad_c
+        align = [for i in range(4)]
+        pad = [for i in range(4)]
+        pic = com_pic()
+        align[0] = MIN_CU_SIZE
+        align[1] = MIN_CU_SIZE >> 1
+        align[2] = MIN_CU_SIZE >> 1
+        pad[0] = pad_l
+        pad[1] = pad_c
+        pad[2] = pad_c
+        imgb = self.com_imgb_create(width, height, pad, align)
+        pic.y     = imgb.addr_plane[0]
+        pic.u     = imgb.addr_plane[1]
+        pic.v     = imgb.addr_plane[2]
+        pic.width_luma   = imgb.width[0]
+        pic.height_luma   = imgb.height[0]
+        pic.width_chroma   = imgb.width[1]
+        pic.height_chroma   = imgb.height[1]
+        pic.stride_luma   = imgb.stride[0]>>1
+        pic.stride_chroma   = imgb.stride[1]>>1
+        pic.padsize_luma = pad_l
+        pic.padsize_chroma = pad_c
+        pic.imgb  = imgb
+        return pic
+
+    def com_imgb_create(self,width,height,pad[4],align[4]):
+        scale = 2
+        imgb = com_imgb()
+        for i in range(3):
+            imgb.width[i] = width
+            imgb.height[i] = height
+            a_size = align[i] if (align != 0) else 0
+            p_size = pad[i] if (pad != 0)else 0
+            imgb.width_aligned[i] = ((width+a_size-1)/a_size)*a_size
+            imgb.height_aligned[i] = ((width+a_size-1)/a_size)*a_size
+            imgb.pad_left[i] = imgb.pad_right[i]=imgb.pad_up[i]=imgb.pad_down[i]=p_size
+            imgb.stride[i] = (imgb.width_aligned[i] + imgb.pad_left[i] + imgb.pad_right[i]) * scale
+            imgb.buf_size[i] = imgb.stride[i]*(imgb.height_aligned[i] + imgb.pad_up[i] + imgb.pad_down[i])
+            imgb.addr_plane[i] = imgb.buf_addr[i] + imgb.pad_up[i]*imgb.stride[i] + imgb.pad_left[i]* scale
+            if(i == 0):
+                width = (width+1)>>1
+                height = (height+1)>>1
+        imgb.np = 3
+        return imgb

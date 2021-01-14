@@ -3,7 +3,6 @@
 
 from  de_core.file_rw  import  *
 
-
 tab_wq_param_default = [[67, 71, 71, 80, 80, 106],[64, 49, 53, 58, 58,  64]]
 g_DOIPrev = 0#前一帧的DOI
 g_CountDOICyCleTime=0#记录DOI的循环次数
@@ -14,10 +13,8 @@ N_C = 3
 tab_WeightQuantModel4x4 = [[0, 4, 3, 5, 4, 2, 1, 5, 3, 1, 1, 5, 5, 5, 5, 5],[0, 4, 4, 5,3, 2, 2, 5,3, 2, 1, 5,5, 5, 5, 5],[ 0, 4, 3, 5, 4, 3, 2, 5, 3, 2, 1, 5, 5, 5, 5, 5],[ 0, 3, 1, 5, 3, 4, 2, 5, 1, 2, 2, 5, 5, 5, 5, 5]]
 
 tab_WeightQuantModel =[[
-
-    #   l a b c d h
-    #   0 1 2 3 4 5
-    
+        #   l a b c d h
+        #   0 1 2 3 4 5
         # Mode 0
         0, 0, 0, 4, 4, 4, 5, 5,
         0, 0, 3, 3, 3, 3, 5, 5,
@@ -59,16 +56,6 @@ tab_WeightQuantModel =[[
         5, 5, 5, 5, 5, 5, 5, 5
 ]]
 
-
-
-
-
-
-
-
-
-
-
 #视频序列定义,这是整个视频解码的最高层
 dict =  {
     'video_sequence_start_code':'00000000000000000000000110110000',#0x000001B0,#视频序列起始码
@@ -87,23 +74,33 @@ dict =  {
 #暂时无用
 class video_sequence:
     def __init__(self,input_file):
-
         self.bsd = bitstream_data(input_file)
-        self.run()
-    def run(self):
-        #if(self.get_read_data(32) == dict['video_sequence_start_code']):
-        #    print('good')
-        self.SH = sequence_header(self.bsd)
-        self.SHrun(self.SH)
-        self.extension_and_user_data(0)
-        IPH = intra_picture_header()
+        self.ctx = dec_ctx()
+        self.SH = self.ctx.info.sqh
+        self.df = decoder_func()
         self.pic_header=com_pic_header()
+        self.run()
+    def run(self):   
+        self.SHrun(self.ctx.info.sqh)
+        #set data begin
+        self.ctx.dpm.libvc_data.is_libpic_processing = self.SH.library_stream_flag
+        self.ctx.dpm.libvc_data.library_picture_enable_flag = self.SH.library_picture_enable_flag
+        #set data end
+        self.extension_and_user_data(0)
+        if(~self.ctx.init_flag):
+            self.df.sequence_init(self.ctx, self.ctx.info.sqh)
+            self.ctx.init_flag=1
+        
+
+
+        IPH = intra_picture_header()
+        
         self.IPH_run(IPH,self.pic_header)
         self.extension_and_user_data(1)
         self.patch_info=patch_info()
-        self.sh = com_sh_ext()
+        self.shext = com_sh_ext()
         self.picture_data()
-        self.df = decoder_func()
+        
         '''
         while((self.get_read_data(32) != dict['video_sequence_end_code']) & (self.get_read_data(32) != dict['video_edit_code'])):
             sequence_header(self.data_file,self.pointer_position)
@@ -416,7 +413,7 @@ class video_sequence:
             self.bsd.memset(pic_header.pic_alf_on, 0, N_C)
         if ((pic_header.slice_type != 'SLICE_I') & (self.SH.affine_enable_flag!=0)):
             pic_header.affine_subblock_size_idx = self.bsd.assign_data('pic_header.affine_subblock_size_idx',1)
-        
+
         self.bsd.next_start_code()
         print('position....................',self.bsd.pointer_position)
 
@@ -467,27 +464,28 @@ class video_sequence:
     
     #图像数据定义
     def picture_data(self):
-        while((self.get_read_data(32) >= dict['patch_start_code1'])&(self.get_read_data(32) <= dict['patch_start_code2'])):#000001+0x00～0x7F(patch_index)
-            self.patch()
+        self.patch()
+        #while((self.get_read_data(32) >= dict['patch_start_code1'])&(self.get_read_data(32) <= dict['patch_start_code2'])):#000001+0x00～0x7F(patch_index)
+        #    self.patch()
     
     #解码片头
     def dec_eco_patch_header(self):
         self.patch_start_code=self.bsd.assign_data('patch_start_code',32)#000001+0x00～0x7F(patch_index)
         if (self.pic_header.fixed_picture_qp_flag == 0):
-            self.sh.fixed_slice_qp_flag=self.bsd.assign_data('fixed_slice_qp_flag',1)
-            self.sh.slice_qp=self.bsd.assign_data('slice_qp',7)
+            self.shext.fixed_slice_qp_flag=self.bsd.assign_data('fixed_slice_qp_flag',1)
+            self.shext.slice_qp=self.bsd.assign_data('slice_qp',7)
         else:
-            self.sh.fixed_patch_qp_flag=1
-            self.sh.slice_qp=self.bsd.assign_data('slice_qp',7)
+            self.shext.fixed_patch_qp_flag=1
+            self.shext.slice_qp=self.bsd.assign_data('slice_qp',7)
         if (self.SH.sample_adaptive_offset_enable_flag==1):#SaoEnableFlag
             for compIdx in range(3):
-                self.sh.patch_sao_enable_flag[compIdx] = self.bsd.assign_data('patch_sao_enable_flag[compIdx]',1)
+                self.shext.slice_sao_enable[compIdx] = self.bsd.assign_data('patch_sao_enable_flag[compIdx]',1)
         while(self.bsd.byte_aligned()==0):#字节对齐
             self.bsd.assign_data('byte_aligned',1)
     
     #解码图像
     def dec_pic(self):
-        #dec_sbac_init(bs);这里代码要读16bit数，文档中不读，再决定是否读
+        #dec_sbac_init(bs)这里代码要读16bit数，文档中不读，再决定是否读
         last_lcu_delta_qp=0
         last_lcu_qp = ctx.info.shext.slice_qp
         while (is_end_of_patch()==0):
@@ -495,13 +493,49 @@ class video_sequence:
             lcu_qp = last_lcu_qp + last_lcu_delta_qp
             self.df.readParaSAO_one_LCU()
 
+    def slice_init(self):
+        self.ctx.dtr_prev_low = self.pic_header.dtr
+        self.ctx.dtr = self.pic_header.dtr
+        self.ctx.ptr = self.pic_header.dtr # PTR 
+        if (self.ctx.info.pic_header.slice_type == SLICE_I | (self.ctx.info.sqh.library_picture_enable_flag & self.ctx.info.pic_header.is_RLpic_flag)):
+            self.ctx.last_intra_ptr = self.ctx.ptr
+
+    def picman_get_empty_pic_from_list(self,dpm):
+        pic = com_pic()
+        for i in range(MAX_PB_SIZE):#34
+            pic = dpm.pic[i]
+            if(pic != 0 & (pic.is_ref==0) & pic.need_for_out == 0):
+                imgb = pic.imgb
+                #check reference count 
+                if(1 == imgb.getref(imgb)):
+                    return i # this is empty buffer 
+        return -1
+
+    def com_picman_get_empty_pic(self,dpm):
+        if (dpm.libvc_data.is_libpic_processing):
+            ret = -1
+        else:
+            ret = picman_get_empty_pic_from_list(dpm)
+        if(ret >= 0):
+            pic = picman_remove_pic_from_pb(dpm, ret)
+        # else if available, allocate picture buffer
+        dpm.cur_pb_size = picman_get_num_allocated_pics(dpm)
+        if (dpm.cur_pb_size + dpm.cur_libpb_size < dpm.max_pb_size):
+            pic = com_pic_alloc(dpm.pa, &ret)
+        dpm.pic_lease = pic
+        return pic
+    
     #片定义
     def patch(self):
         self.dec_eco_patch_header()
-        self.dec_pic()
+        self.slice_init()
+        self.ctx.pic = self.com_picman_get_empty_pic(self.ctx.dpm)
+        #get available frame buffer for decoded image 
+        ctx.map.map_refi = ctx.pic.map_refi
+        ctx.map.map_mv = ctx.pic.map_mv
+        #self.dec_pic()
 
-
-
+        '''
         while (is_end_of_patch()==0):
             if (FixedQP==0):
                 lcu_qp_delta
@@ -534,6 +568,7 @@ class video_sequence:
             aec_lcu_stuffing_bit
         next_start_code( )
         patch_end_code
+        '''
     
     # 参考图像队列配置集定义，解码参考图像
     def reference_picture_list_set(self,rpl):
